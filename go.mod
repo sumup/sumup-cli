@@ -11,7 +11,7 @@ require (
 	github.com/mergestat/timediff v0.0.4
 	github.com/shopspring/decimal v1.4.0
 	github.com/sumup/sumup-go v0.9.0
-	github.com/urfave/cli/v3 v3.6.1
+	github.com/urfave/cli/v3 v3.6.2
 	golang.org/x/term v0.39.0
 )
 
