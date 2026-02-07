@@ -189,8 +189,8 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 			attribute.OptionalStringValue(tx.ID),
 			attribute.OptionalStringValue(tx.TransactionCode),
 			attribute.ValueOf(currency.FormatPointers(tx.Amount, tx.Currency)),
-			attribute.OptionalValue(tx.Status, func(v transactions.TransactionHistoryStatus) string { return string(v) }),
-			attribute.OptionalValue(tx.PaymentType, func(v shared.PaymentType) string { return string(v) }),
+			attribute.OptionalValue(tx.Status),
+			attribute.OptionalValue(tx.PaymentType),
 			attribute.ValueOf(util.TimeOrDash(appCtx, tx.Timestamp)),
 		})
 	}

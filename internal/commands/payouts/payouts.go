@@ -96,13 +96,18 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 
 	rows := make([][]attribute.Value, 0, len(*payoutList))
 	for _, payout := range *payoutList {
+		fee := attribute.OptionalValue(payout.Fee)
+		if payout.Fee != nil {
+			fee = attribute.ValueOf(fmt.Sprintf("%.2f", *payout.Fee))
+		}
+
 		rows = append(rows, []attribute.Value{
-			attribute.OptionalValue(payout.ID, func(v int) string { return fmt.Sprintf("%d", v) }),
-			attribute.OptionalValue(payout.Date, func(d datetime.Date) string { return d.String() }),
+			attribute.OptionalValue(payout.ID),
+			attribute.OptionalValue(payout.Date),
 			attribute.ValueOf(payoutAmount(payout)),
-			attribute.OptionalValue(payout.Fee, func(v float32) string { return fmt.Sprintf("%.2f", v) }),
-			attribute.OptionalValue(payout.Status, func(v payouts.FinancialPayoutStatus) string { return string(v) }),
-			attribute.OptionalValue(payout.Type, func(v payouts.FinancialPayoutType) string { return string(v) }),
+			fee,
+			attribute.OptionalValue(payout.Status),
+			attribute.OptionalValue(payout.Type),
 			attribute.OptionalStringValue(payout.Reference),
 		})
 	}

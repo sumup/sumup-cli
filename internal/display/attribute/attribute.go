@@ -20,30 +20,14 @@ func (v Value) String() string {
 	return v.Style.Render(v.Text)
 }
 
-type styled[T any] struct {
-	V     T
-	Style lipgloss.Style
-}
-
-func (s styled[T]) String() string {
-	return s.Style.Render(fmt.Sprintf("%v", s.V))
-}
-
-func (s styled[T]) toValue() Value {
-	return Value{
-		Text:  fmt.Sprintf("%v", s.V),
-		Style: s.Style,
-	}
-}
-
-func Styled[T any](v T, style ...lipgloss.Style) styled[T] {
-	styl := lipgloss.NewStyle()
+func Styled[T any](v T, style ...lipgloss.Style) Value {
+	s := lipgloss.NewStyle()
 	if len(style) > 0 {
-		styl = style[0]
+		s = style[0]
 	}
-	return styled[T]{
-		V:     v,
-		Style: styl,
+	return Value{
+		Text:  fmt.Sprintf("%v", v),
+		Style: s,
 	}
 }
 
@@ -56,34 +40,22 @@ type KeyValue struct {
 	Value Value
 }
 
-func Attribute[T any](key string, value styled[T]) KeyValue {
+func Attribute(key string, value Value) KeyValue {
 	return KeyValue{
-		Key:   Styled(key, keyStyle).toValue(),
-		Value: value.toValue(),
+		Key:   Styled(key, keyStyle),
+		Value: value,
 	}
-}
-
-func Int(key string, value styled[int]) KeyValue {
-	return Attribute(key, value)
-}
-
-func Bool(key string, value styled[bool]) KeyValue {
-	return Attribute(key, value)
-}
-
-func Stringer(key string, value styled[fmt.Stringer]) KeyValue {
-	return Attribute(key, value)
 }
 
 func ValueOf[T any](v T, style ...lipgloss.Style) Value {
-	return Styled(v, style...).toValue()
+	return Styled(v, style...)
 }
 
-func OptionalValue[T any](value *T, formatter func(T) string) Value {
+func OptionalValue[T any](value *T) Value {
 	if value == nil {
 		return ValueOf("-")
 	}
-	return ValueOf(formatter(*value))
+	return ValueOf(*value)
 }
 
 func OptionalStringValue(value *string) Value {
@@ -93,18 +65,18 @@ func OptionalStringValue(value *string) Value {
 	return ValueOf(*value)
 }
 
-// Optional renders the provided pointer using formatter. Missing values are displayed as "-".
-func Optional[T any](key string, value *T, formatter func(T) string) KeyValue {
+// Optional renders the provided pointer. Missing values are displayed as "-".
+func Optional[T any](key string, value *T) KeyValue {
 	return KeyValue{
-		Key:   Styled(key, keyStyle).toValue(),
-		Value: OptionalValue(value, formatter),
+		Key:   Styled(key, keyStyle),
+		Value: OptionalValue(value),
 	}
 }
 
 // OptionalString renders string pointers, treating nil or empty values as "-".
 func OptionalString(key string, value *string) KeyValue {
 	return KeyValue{
-		Key:   Styled(key, keyStyle).toValue(),
+		Key:   Styled(key, keyStyle),
 		Value: OptionalStringValue(value),
 	}
 }

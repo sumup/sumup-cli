@@ -351,19 +351,18 @@ func readerStatus(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	data := response.Data
+	batteryTemp := attribute.OptionalValue(data.BatteryTemperature)
+	if data.BatteryTemperature != nil {
+		batteryTemp = attribute.ValueOf(fmt.Sprintf("%d°C", *data.BatteryTemperature))
+	}
+
 	details := []attribute.KeyValue{
 		attribute.ID(readerID),
 		attribute.Attribute("Status", attribute.Styled(string(data.Status))),
-		attribute.Optional("State", data.State, func(v readers.StatusResponseDataState) string {
-			return string(v)
-		}),
-		attribute.Optional("Connection", data.ConnectionType, func(v readers.StatusResponseDataConnectionType) string {
-			return string(v)
-		}),
+		attribute.Optional("State", data.State),
+		attribute.Optional("Connection", data.ConnectionType),
 		attribute.Attribute("Battery Level", attribute.Styled(readerStatusBatteryLevel(data.BatteryLevel))),
-		attribute.Optional("Battery Temp", data.BatteryTemperature, func(v int) string {
-			return fmt.Sprintf("%d°C", v)
-		}),
+		attribute.Attribute("Battery Temp", batteryTemp),
 		attribute.OptionalString("Firmware", data.FirmwareVersion),
 		attribute.Attribute("Last Activity", attribute.Styled(util.TimeOrDash(appCtx, data.LastActivity))),
 	}
