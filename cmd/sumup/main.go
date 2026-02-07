@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/sumup/sumup-cli/internal/app"
+	"github.com/sumup/sumup-cli/internal/buildinfo"
 	"github.com/sumup/sumup-cli/internal/commands"
 	"github.com/sumup/sumup-cli/internal/display/message"
 )
@@ -16,6 +17,7 @@ func main() {
 	cliApp := &cli.Command{
 		Name:                  "sumup",
 		Usage:                 "Command line tool for the SumUp API",
+		Version:               buildinfo.Short(),
 		EnableShellCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{

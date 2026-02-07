@@ -31,3 +31,15 @@ vulncheck-sarif: ## Check for Vulnerabilities
 .PHONY: install-tools
 install-tools: # Install development dependencies
 	go install golang.org/x/vuln/cmd/govulncheck@latest
+
+VERSION ?= dev
+COMMIT ?= $(shell git rev-parse --short HEAD)
+DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+LDFLAGS := -s -w \
+	-X github.com/sumup/sumup-cli/internal/buildinfo.Version=$(VERSION) \
+	-X github.com/sumup/sumup-cli/internal/buildinfo.Commit=$(COMMIT) \
+	-X github.com/sumup/sumup-cli/internal/buildinfo.Date=$(DATE)
+
+.PHONY: build
+build: ## Build CLI binary with build metadata
+	go build -ldflags "$(LDFLAGS)" -o ./bin/sumup ./cmd/sumup
