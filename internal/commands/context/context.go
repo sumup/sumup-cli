@@ -157,7 +157,7 @@ func (m model) searchMemberships(query string, parentID string, parentType membe
 		}
 
 		if parentID != "" {
-			params.ResourceParentId = &parentID
+			params.ResourceParentID = &parentID
 		}
 
 		if parentType != "" {
@@ -350,7 +350,7 @@ func (m model) View() string {
 		}
 		s.WriteString("\n")
 	} else if len(items) > maxVisible {
-		s.WriteString(fmt.Sprintf("\n(Showing %d-%d of %d)", start+1, end, len(items)))
+		fmt.Fprintf(&s, "\n(Showing %d-%d of %d)", start+1, end, len(items))
 	}
 
 	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))

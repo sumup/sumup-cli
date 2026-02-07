@@ -2,6 +2,7 @@ package readers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/sumup/sumup-go/readers"
+	"github.com/sumup/sumup-go/shared"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
@@ -63,6 +65,20 @@ func NewCommand() *cli.Command {
 				Name:      "delete",
 				Usage:     "Delete a paired reader from the merchant account.",
 				Action:    deleteReader,
+				ArgsUsage: "<reader-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "merchant-code",
+						Usage:    "Merchant code that owns the reader.",
+						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
+						Required: true,
+					},
+				},
+			},
+			{
+				Name:      "status",
+				Usage:     "Show the last known status of a reader.",
+				Action:    readerStatus,
 				ArgsUsage: "<reader-id>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -156,20 +172,24 @@ func listReaders(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(response.Items)
 	}
 
-	rows := make([][]string, 0, len(response.Items))
+	rows := make([][]attribute.Value, 0, len(response.Items))
 	for _, reader := range response.Items {
 		name := string(reader.Name)
 		model := string(reader.Device.Model)
-		rows = append(rows, []string{
-			string(reader.ID),
-			name,
-			string(reader.Status),
-			model,
-			reader.Device.Identifier,
+		rows = append(rows, []attribute.Value{
+			attribute.ValueOf(string(reader.ID)),
+			attribute.ValueOf(name),
+			attribute.ValueOf(string(reader.Status)),
+			attribute.ValueOf(model),
+			attribute.ValueOf(reader.Device.Identifier),
 		})
 	}
 
-	display.RenderTable("Readers", []string{"ID", "Name", "Status", "Model", "Identifier"}, rows)
+	display.RenderTable(
+		"Readers",
+		[]string{"ID", "Name", "Status", "Model", "Identifier"},
+		rows,
+	)
 	return nil
 }
 
@@ -184,7 +204,9 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	reader, err := appCtx.Client.Readers.Create(ctx, cmd.String("merchant-code"), body)
-	if err != nil {
+	if pErr := new(shared.Problem); errors.As(err, &pErr) {
+		return fmt.Errorf("create reader: %v %v", *pErr.Detail, *pErr.Title)
+	} else if err != nil {
 		return fmt.Errorf("create reader: %w", err)
 	}
 
@@ -213,7 +235,7 @@ func deleteReader(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	err = appCtx.Client.Readers.Delete(ctx, cmd.String("merchant-code"), readers.ReaderId(readerID))
+	err = appCtx.Client.Readers.Delete(ctx, cmd.String("merchant-code"), readers.ReaderID(readerID))
 	if err != nil {
 		return fmt.Errorf("delete reader: %w", err)
 	}
@@ -259,7 +281,7 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		body.Description = &desc
 	}
 	if returnURL := cmd.String("return-url"); returnURL != "" {
-		body.ReturnUrl = &returnURL
+		body.ReturnURL = &returnURL
 	}
 	if cardType := cmd.String("card-type"); cardType != "" {
 		ct := readers.CreateReaderCheckoutBodyCardType(cardType)
@@ -309,6 +331,55 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+func readerStatus(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	readerID, err := util.RequireSingleArg(cmd, "reader ID")
+	if err != nil {
+		return err
+	}
+
+	response, err := appCtx.Client.Readers.GetStatus(ctx, cmd.String("merchant-code"), readerID, readers.GetReaderStatusParams{})
+	if err != nil {
+		return fmt.Errorf("get reader status: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(response)
+	}
+
+	data := response.Data
+	details := []attribute.KeyValue{
+		attribute.ID(readerID),
+		attribute.Attribute("Status", attribute.Styled(string(data.Status))),
+		attribute.Optional("State", data.State, func(v readers.StatusResponseDataState) string {
+			return string(v)
+		}),
+		attribute.Optional("Connection", data.ConnectionType, func(v readers.StatusResponseDataConnectionType) string {
+			return string(v)
+		}),
+		attribute.Attribute("Battery Level", attribute.Styled(readerStatusBatteryLevel(data.BatteryLevel))),
+		attribute.Optional("Battery Temp", data.BatteryTemperature, func(v int) string {
+			return fmt.Sprintf("%d°C", v)
+		}),
+		attribute.OptionalString("Firmware", data.FirmwareVersion),
+		attribute.Attribute("Last Activity", attribute.Styled(util.TimeOrDash(appCtx, data.LastActivity))),
+	}
+
+	display.DataList(details)
+	return nil
+}
+
+func readerStatusBatteryLevel(v *float32) string {
+	if v == nil {
+		return "-"
+	}
+
+	return fmt.Sprintf("%.0f%%", *v)
+}
+
 func buildAffiliatePayload(cmd *cli.Command) (*readers.CreateReaderCheckoutBodyAffiliate, error) {
 	appID := cmd.String("affiliate-app-id")
 	key := cmd.String("affiliate-key")
@@ -320,8 +391,8 @@ func buildAffiliatePayload(cmd *cli.Command) (*readers.CreateReaderCheckoutBodyA
 		return nil, fmt.Errorf("affiliate requires --affiliate-app-id, --affiliate-key, and --affiliate-foreign-transaction-id")
 	}
 	return &readers.CreateReaderCheckoutBodyAffiliate{
-		AppId:                appID,
+		AppID:                appID,
 		Key:                  key,
-		ForeignTransactionId: foreignID,
+		ForeignTransactionID: foreignID,
 	}, nil
 }

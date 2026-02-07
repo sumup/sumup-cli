@@ -12,8 +12,8 @@ import (
 	"github.com/sumup/sumup-go/payouts"
 
 	"github.com/sumup/sumup-cli/internal/app"
-	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
+	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
 
 func NewCommand() *cli.Command {
@@ -94,20 +94,24 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(payoutList)
 	}
 
-	rows := make([][]string, 0, len(*payoutList))
+	rows := make([][]attribute.Value, 0, len(*payoutList))
 	for _, payout := range *payoutList {
-		rows = append(rows, []string{
-			intPointerToString(payout.ID),
-			dateOrDash(payout.Date),
-			payoutAmount(payout),
-			floatPointerToString(payout.Fee),
-			enumOrDash(payout.Status),
-			enumOrDash(payout.Type),
-			util.StringOrDefault(payout.Reference, "-"),
+		rows = append(rows, []attribute.Value{
+			attribute.OptionalValue(payout.ID, func(v int) string { return fmt.Sprintf("%d", v) }),
+			attribute.OptionalValue(payout.Date, func(d datetime.Date) string { return d.String() }),
+			attribute.ValueOf(payoutAmount(payout)),
+			attribute.OptionalValue(payout.Fee, func(v float32) string { return fmt.Sprintf("%.2f", v) }),
+			attribute.OptionalValue(payout.Status, func(v payouts.FinancialPayoutStatus) string { return string(v) }),
+			attribute.OptionalValue(payout.Type, func(v payouts.FinancialPayoutType) string { return string(v) }),
+			attribute.OptionalStringValue(payout.Reference),
 		})
 	}
 
-	display.RenderTable("Payouts", []string{"ID", "Date", "Amount", "Fee", "Status", "Type", "Reference"}, rows)
+	display.RenderTable(
+		"Payouts",
+		[]string{"ID", "Date", "Amount", "Fee", "Status", "Type", "Reference"},
+		rows,
+	)
 	return nil
 }
 
@@ -117,34 +121,6 @@ func parseDateArg(value string) (datetime.Date, error) {
 		return datetime.Date{}, fmt.Errorf("invalid date %q: %w", value, err)
 	}
 	return datetime.Date{Time: parsed}, nil
-}
-
-func intPointerToString(value *int) string {
-	if value == nil {
-		return "-"
-	}
-	return fmt.Sprintf("%d", *value)
-}
-
-func floatPointerToString(value *float32) string {
-	if value == nil {
-		return "-"
-	}
-	return fmt.Sprintf("%.2f", *value)
-}
-
-func enumOrDash[T ~string](value *T) string {
-	if value == nil {
-		return "-"
-	}
-	return string(*value)
-}
-
-func dateOrDash(value *datetime.Date) string {
-	if value == nil {
-		return "-"
-	}
-	return value.String()
 }
 
 func payoutAmount(payout payouts.FinancialPayout) string {

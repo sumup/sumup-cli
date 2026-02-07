@@ -153,7 +153,7 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 		params.Email = &value
 	}
 	if value := cmd.String("user-id"); value != "" {
-		params.UserId = &value
+		params.UserID = &value
 	}
 	if roles := cmd.StringSlice("role"); len(roles) > 0 {
 		params.Roles = roles
@@ -179,18 +179,22 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(response.Items)
 	}
 
-	rows := make([][]string, 0, len(response.Items))
+	rows := make([][]attribute.Value, 0, len(response.Items))
 	for _, member := range response.Items {
-		rows = append(rows, []string{
-			member.ID,
-			memberEmail(member),
-			memberRoles(member.Roles),
-			membershipStatusLabel(member.Status),
-			member.CreatedAt.UTC().Format(time.RFC3339),
+		rows = append(rows, []attribute.Value{
+			attribute.ValueOf(member.ID),
+			attribute.ValueOf(memberEmail(member)),
+			attribute.ValueOf(memberRoles(member.Roles)),
+			attribute.ValueOf(membershipStatusLabel(member.Status)),
+			attribute.ValueOf(member.CreatedAt.UTC().Format(time.RFC3339)),
 		})
 	}
 
-	display.RenderTable("Members", []string{"ID", "Email", "Roles", "Status", "Created At"}, rows)
+	display.RenderTable(
+		"Members",
+		[]string{"ID", "Email", "Roles", "Status", "Created At"},
+		rows,
+	)
 	return nil
 }
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/display"
+	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
 
 func NewCommand() *cli.Command {
@@ -105,19 +106,23 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(response)
 	}
 
-	rows := make([][]string, 0, len(response.Items))
+	rows := make([][]attribute.Value, 0, len(response.Items))
 	for _, membership := range response.Items {
-		rows = append(rows, []string{
-			membership.ID,
-			membership.Resource.Name,
-			string(membership.Resource.Type),
-			memberRoles(membership.Roles),
-			membershipStatusLabel(membership.Status),
-			membership.CreatedAt.UTC().Format(time.RFC3339),
+		rows = append(rows, []attribute.Value{
+			attribute.ValueOf(membership.ID),
+			attribute.ValueOf(membership.Resource.Name),
+			attribute.ValueOf(string(membership.Resource.Type)),
+			attribute.ValueOf(memberRoles(membership.Roles)),
+			attribute.ValueOf(membershipStatusLabel(membership.Status)),
+			attribute.ValueOf(membership.CreatedAt.UTC().Format(time.RFC3339)),
 		})
 	}
 
-	display.RenderTable("Memberships", []string{"ID", "Resource", "Type", "Roles", "Status", "Created At"}, rows)
+	display.RenderTable(
+		"Memberships",
+		[]string{"ID", "Resource", "Type", "Roles", "Status", "Created At"},
+		rows,
+	)
 	return nil
 }
 

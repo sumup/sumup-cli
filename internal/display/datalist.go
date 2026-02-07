@@ -2,6 +2,7 @@ package display
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
@@ -13,7 +14,7 @@ func DataList(pairs []attribute.KeyValue) {
 	}
 
 	for _, pair := range pairs {
-		if pair.Key.V == "" {
+		if strings.TrimSpace(pair.Key.Text) == "" {
 			continue
 		}
 		fmt.Printf("%s: %s\n", pair.Key.String(), pair.Value.String())
