@@ -11,6 +11,7 @@ import (
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
+	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
 
 func NewCommand() *cli.Command {
@@ -46,18 +47,22 @@ func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(instruments)
 	}
 
-	rows := make([][]string, 0, len(*instruments))
+	rows := make([][]attribute.Value, 0, len(*instruments))
 	for _, instrument := range *instruments {
-		rows = append(rows, []string{
-			util.StringOrDefault(instrument.Token, "-"),
-			paymentInstrumentType(&instrument),
-			lastFour(&instrument),
-			util.BoolLabel(instrument.Active),
-			util.TimeOrDash(appCtx, instrument.CreatedAt),
+		rows = append(rows, []attribute.Value{
+			attribute.OptionalStringValue(instrument.Token),
+			attribute.ValueOf(paymentInstrumentType(&instrument)),
+			attribute.ValueOf(lastFour(&instrument)),
+			attribute.ValueOf(util.BoolLabel(instrument.Active)),
+			attribute.ValueOf(util.TimeOrDash(appCtx, instrument.CreatedAt)),
 		})
 	}
 
-	display.RenderTable("Payment Instruments", []string{"Token", "Type", "Last 4", "Active", "Created At"}, rows)
+	display.RenderTable(
+		"Payment Instruments",
+		[]string{"Token", "Type", "Last 4", "Active", "Created At"},
+		rows,
+	)
 	return nil
 }
 

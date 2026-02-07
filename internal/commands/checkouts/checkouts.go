@@ -38,8 +38,8 @@ func NewCommand() *cli.Command {
 				Name:  "create",
 				Usage: "Create a new checkout resource.",
 				Description: `Examples:
-  sumup-cli checkouts create --reference order-123 --amount 10 --currency EUR --merchant-code M123
-  sumup-cli checkouts create --reference ticket-42 --amount 29.99 --currency EUR --merchant-code M123 --description "Ticket" --return-url https://example.com/return`,
+  sumup checkouts create --reference order-123 --amount 10 --currency EUR --merchant-code M123
+  sumup checkouts create --reference ticket-42 --amount 29.99 --currency EUR --merchant-code M123 --description "Ticket" --return-url https://example.com/return`,
 				Action: createCheckout,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -113,23 +113,27 @@ func listCheckouts(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(checkoutList)
 	}
 
-	rows := make([][]string, 0, len(*checkoutList))
+	rows := make([][]attribute.Value, 0, len(*checkoutList))
 	for _, checkout := range *checkoutList {
 		status := "-"
 		if checkout.Status != nil {
 			status = string(*checkout.Status)
 		}
-		rows = append(rows, []string{
-			util.StringOrDefault(checkout.ID, "-"),
-			util.StringOrDefault(checkout.CheckoutReference, "-"),
-			currency.FormatPointers(checkout.Amount, checkout.Currency),
-			status,
-			util.StringOrDefault(checkout.MerchantCode, "-"),
-			util.TimeOrDash(appCtx, checkout.Date),
+		rows = append(rows, []attribute.Value{
+			attribute.OptionalStringValue(checkout.ID),
+			attribute.OptionalStringValue(checkout.CheckoutReference),
+			attribute.ValueOf(currency.FormatPointers(checkout.Amount, checkout.Currency)),
+			attribute.ValueOf(status),
+			attribute.OptionalStringValue(checkout.MerchantCode),
+			attribute.ValueOf(util.TimeOrDash(appCtx, checkout.Date)),
 		})
 	}
 
-	display.RenderTable("Checkouts", []string{"ID", "Reference", "Amount", "Status", "Merchant", "Created At"}, rows)
+	display.RenderTable(
+		"Checkouts",
+		[]string{"ID", "Reference", "Amount", "Status", "Merchant", "Created At"},
+		rows,
+	)
 	return nil
 }
 
@@ -160,13 +164,13 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		body.Description = &value
 	}
 	if value := cmd.String("return-url"); value != "" {
-		body.ReturnUrl = &value
+		body.ReturnURL = &value
 	}
 	if value := cmd.String("redirect-url"); value != "" {
-		body.RedirectUrl = &value
+		body.RedirectURL = &value
 	}
 	if value := cmd.String("customer-id"); value != "" {
-		body.CustomerId = &value
+		body.CustomerID = &value
 	}
 	if value := cmd.String("purpose"); value != "" {
 		purpose := checkouts.CreateCheckoutBodyPurpose(value)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/display"
+	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
 
 type role struct {
@@ -40,12 +41,20 @@ func listRoles(_ context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(roles)
 	}
 
-	rows := make([][]string, 0, len(roles))
+	rows := make([][]attribute.Value, 0, len(roles))
 	for _, role := range roles {
-		rows = append(rows, []string{role.Name, role.DisplayName, role.Description})
+		rows = append(rows, []attribute.Value{
+			attribute.ValueOf(role.Name),
+			attribute.ValueOf(role.DisplayName),
+			attribute.ValueOf(role.Description),
+		})
 	}
 
-	display.RenderTable("Roles", []string{"Role", "Display Name", "Description"}, rows)
+	display.RenderTable(
+		"Roles",
+		[]string{"Role", "Display Name", "Description"},
+		rows,
+	)
 	return nil
 }
 

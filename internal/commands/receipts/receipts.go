@@ -62,7 +62,7 @@ func getReceipt(ctx context.Context, cmd *cli.Command) error {
 	}
 	if cmd.IsSet("transaction-event-id") {
 		value := cmd.Int("transaction-event-id")
-		params.TxEventId = &value
+		params.TxEventID = &value
 	}
 
 	receipt, err := appCtx.Client.Receipts.Get(ctx, transactionID, params)
@@ -82,13 +82,13 @@ func renderReceipt(receipt *receipts.Receipt) {
 	if transaction := receipt.TransactionData; transaction != nil {
 		fmt.Println("Transaction")
 		display.DataList([]attribute.KeyValue{
-			attribute.Attribute("Code", attribute.Styled(util.StringOrDefault(transaction.TransactionCode, "-"))),
-			attribute.Attribute("Status", attribute.Styled(util.StringOrDefault(transaction.Status, "-"))),
-			attribute.Attribute("Payment Type", attribute.Styled(util.StringOrDefault(transaction.PaymentType, "-"))),
+			attribute.OptionalString("Code", transaction.TransactionCode),
+			attribute.OptionalString("Status", transaction.Status),
+			attribute.OptionalString("Payment Type", transaction.PaymentType),
 			attribute.Attribute("Amount", attribute.Styled(receiptAmount(transaction))),
 			attribute.Attribute("Timestamp", attribute.Styled(timePointerToString(transaction.Timestamp))),
-			attribute.Attribute("Entry Mode", attribute.Styled(util.StringOrDefault(transaction.EntryMode, "-"))),
-			attribute.Attribute("Verification", attribute.Styled(util.StringOrDefault(transaction.VerificationMethod, "-"))),
+			attribute.OptionalString("Entry Mode", transaction.EntryMode),
+			attribute.OptionalString("Verification", transaction.VerificationMethod),
 			attribute.Attribute("Card", attribute.Styled(receiptCard(transaction))),
 		})
 	} else {
@@ -99,14 +99,14 @@ func renderReceipt(receipt *receipts.Receipt) {
 		fmt.Println("\nMerchant")
 		pairs := make([]attribute.KeyValue, 0, 5)
 		if profile := merchant.MerchantProfile; profile != nil {
-			pairs = append(pairs, attribute.Attribute("Name", attribute.Styled(util.StringOrDefault(profile.BusinessName, "-"))))
-			pairs = append(pairs, attribute.Attribute("Code", attribute.Styled(util.StringOrDefault(profile.MerchantCode, "-"))))
+			pairs = append(pairs, attribute.OptionalString("Name", profile.BusinessName))
+			pairs = append(pairs, attribute.OptionalString("Code", profile.MerchantCode))
 			if address := profile.Address; address != nil {
 				if formatted := formatAddress(address); formatted != "" {
 					pairs = append(pairs, attribute.Attribute("Address", attribute.Styled(formatted)))
 				}
 			}
-			pairs = append(pairs, attribute.Attribute("Email", attribute.Styled(util.StringOrDefault(profile.Email, "-"))))
+			pairs = append(pairs, attribute.OptionalString("Email", profile.Email))
 		} else {
 			fmt.Println("Merchant profile unavailable")
 		}
@@ -119,10 +119,10 @@ func renderReceipt(receipt *receipts.Receipt) {
 	if acquirer := receipt.AcquirerData; acquirer != nil {
 		fmt.Println("\nAcquirer")
 		display.DataList([]attribute.KeyValue{
-			attribute.Attribute("Terminal ID", attribute.Styled(util.StringOrDefault(acquirer.Tid, "-"))),
-			attribute.Attribute("Authorization Code", attribute.Styled(util.StringOrDefault(acquirer.AuthorizationCode, "-"))),
-			attribute.Attribute("Return Code", attribute.Styled(util.StringOrDefault(acquirer.ReturnCode, "-"))),
-			attribute.Attribute("Local Time", attribute.Styled(util.StringOrDefault(acquirer.LocalTime, "-"))),
+			attribute.OptionalString("Terminal ID", acquirer.Tid),
+			attribute.OptionalString("Authorization Code", acquirer.AuthorizationCode),
+			attribute.OptionalString("Return Code", acquirer.ReturnCode),
+			attribute.OptionalString("Local Time", acquirer.LocalTime),
 		})
 	}
 

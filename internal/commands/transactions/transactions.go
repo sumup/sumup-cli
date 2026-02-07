@@ -8,6 +8,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	"github.com/sumup/sumup-go/shared"
 	"github.com/sumup/sumup-go/transactions"
 
 	"github.com/sumup/sumup-cli/internal/app"
@@ -143,7 +144,16 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 		params.Order = &value
 	}
 	if values := cmd.StringSlice("payment-type"); len(values) > 0 {
-		params.PaymentTypes = values
+		types := make([]shared.PaymentType, 0, len(values))
+		for _, v := range values {
+			if v == "" {
+				continue
+			}
+			types = append(types, shared.PaymentType(v))
+		}
+		if len(types) > 0 {
+			params.PaymentTypes = types
+		}
 	}
 	if values := cmd.StringSlice("status"); len(values) > 0 {
 		params.Statuses = values
@@ -173,19 +183,23 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(items)
 	}
 
-	rows := make([][]string, 0, len(items))
+	rows := make([][]attribute.Value, 0, len(items))
 	for _, tx := range items {
-		rows = append(rows, []string{
-			util.StringOrDefault(tx.ID, "-"),
-			util.StringOrDefault(tx.TransactionCode, "-"),
-			currency.FormatPointers(tx.Amount, tx.Currency),
-			transactionHistoryStatus(tx.Status),
-			transactionHistoryPaymentType(tx.PaymentType),
-			util.TimeOrDash(appCtx, tx.Timestamp),
+		rows = append(rows, []attribute.Value{
+			attribute.OptionalStringValue(tx.ID),
+			attribute.OptionalStringValue(tx.TransactionCode),
+			attribute.ValueOf(currency.FormatPointers(tx.Amount, tx.Currency)),
+			attribute.OptionalValue(tx.Status, func(v transactions.TransactionHistoryStatus) string { return string(v) }),
+			attribute.OptionalValue(tx.PaymentType, func(v shared.PaymentType) string { return string(v) }),
+			attribute.ValueOf(util.TimeOrDash(appCtx, tx.Timestamp)),
 		})
 	}
 
-	display.RenderTable("Transactions", []string{"ID", "Code", "Amount", "Status", "Payment Type", "Created At"}, rows)
+	display.RenderTable(
+		"Transactions",
+		[]string{"ID", "Code", "Amount", "Status", "Payment Type", "Created At"},
+		rows,
+	)
 	return nil
 }
 
@@ -221,20 +235,6 @@ func getTransaction(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func transactionHistoryStatus(status *transactions.TransactionHistoryStatus) string {
-	if status == nil {
-		return "-"
-	}
-	return string(*status)
-}
-
-func transactionHistoryPaymentType(paymentType *transactions.TransactionHistoryPaymentType) string {
-	if paymentType == nil {
-		return "-"
-	}
-	return string(*paymentType)
-}
-
 func renderTransactionDetails(appCtx *app.Context, transaction *transactions.TransactionFull) {
 	status := "-"
 	if transaction.Status != nil && *transaction.Status != "" {
@@ -248,12 +248,12 @@ func renderTransactionDetails(appCtx *app.Context, transaction *transactions.Tra
 	display.DataList([]attribute.KeyValue{
 		attribute.ID(util.StringOrDefault(transaction.ID, "-")),
 		attribute.Attribute("Status", attribute.Styled(status)),
-		attribute.Attribute("Code", attribute.Styled(util.StringOrDefault(transaction.TransactionCode, "-"))),
+		attribute.OptionalString("Code", transaction.TransactionCode),
 		attribute.Attribute("Amount", attribute.Styled(currency.FormatPointers(transaction.Amount, transaction.Currency))),
-		attribute.Attribute("Merchant", attribute.Styled(util.StringOrDefault(transaction.MerchantCode, "-"))),
+		attribute.OptionalString("Merchant", transaction.MerchantCode),
 		attribute.Attribute("Payment Type", attribute.Styled(paymentType)),
 		attribute.Attribute("Card", attribute.Styled(transactionCardLabel(transaction.Card))),
-		attribute.Attribute("Description", attribute.Styled(util.StringOrDefault(transaction.ProductSummary, "-"))),
+		attribute.OptionalString("Description", transaction.ProductSummary),
 		attribute.Attribute("Created At", attribute.Styled(util.TimeOrDash(appCtx, transaction.Timestamp))),
 	})
 }
