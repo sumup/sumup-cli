@@ -1,0 +1,100 @@
+version: 2
+
+project_name: sumup
+
+release:
+  prerelease: auto
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: macos
+    main: ./cmd/sumup/main.go
+    binary: sumup
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/sumup/sumup-cli/internal/buildinfo.Version={{ .Version }} -X github.com/sumup/sumup-cli/internal/buildinfo.Commit={{ .Commit }} -X github.com/sumup/sumup-cli/internal/buildinfo.Date={{ .Date }}
+
+  - id: linux
+    main: ./cmd/sumup/main.go
+    binary: sumup
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/sumup/sumup-cli/internal/buildinfo.Version={{ .Version }} -X github.com/sumup/sumup-cli/internal/buildinfo.Commit={{ .Commit }} -X github.com/sumup/sumup-cli/internal/buildinfo.Date={{ .Date }}
+
+  - id: windows
+    main: ./cmd/sumup/main.go
+    binary: sumup
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/sumup/sumup-cli/internal/buildinfo.Version={{ .Version }} -X github.com/sumup/sumup-cli/internal/buildinfo.Commit={{ .Commit }} -X github.com/sumup/sumup-cli/internal/buildinfo.Date={{ .Date }}
+
+    # Enable when signing credentials are configured in CI.
+    # hooks:
+    #   post:
+    #     - cmd: >-
+    #         {{ if eq .Os "darwin" }}./scripts/sign-macos.sh '{{ .Path }}'{{ else }}echo{{ end }}
+    #       output: true
+    #     - cmd: >-
+    #         {{ if eq .Os "windows" }}pwsh ./scripts/sign-windows.ps1 '{{ .Path }}'{{ else }}echo{{ end }}
+    #       output: true
+
+archives:
+  - id: linux-archive
+    ids: [linux]
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_linux_
+      {{- if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE
+      - README.md
+  - id: macos-archive
+    ids: [macos]
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_macOS_
+      {{- if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE
+      - README.md
+  - id: windows-archive
+    ids: [windows]
+    formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_windows_
+      {{- if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'

@@ -14,6 +14,7 @@ import (
 	"github.com/sumup/sumup-cli/internal/commands/receipts"
 	"github.com/sumup/sumup-cli/internal/commands/roles"
 	"github.com/sumup/sumup-cli/internal/commands/transactions"
+	"github.com/sumup/sumup-cli/internal/commands/version"
 )
 
 // All returns the list of resource commands exposed by the CLI.
@@ -30,5 +31,6 @@ func All() []*cli.Command {
 		receipts.NewCommand(),
 		roles.NewCommand(),
 		transactions.NewCommand(),
+		version.NewCommand(),
 	}
 }
