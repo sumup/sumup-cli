@@ -33,6 +33,8 @@ builds:
     goarch:
       - amd64
       - arm64
+      - "386"
+      - arm
     ldflags:
       - -s -w -X github.com/sumup/sumup-cli/internal/buildinfo.Version={{ .Version }} -X github.com/sumup/sumup-cli/internal/buildinfo.Commit={{ .Commit }} -X github.com/sumup/sumup-cli/internal/buildinfo.Date={{ .Date }}
 
@@ -46,6 +48,7 @@ builds:
     goarch:
       - amd64
       - arm64
+      - "386"
     ldflags:
       - -s -w -X github.com/sumup/sumup-cli/internal/buildinfo.Version={{ .Version }} -X github.com/sumup/sumup-cli/internal/buildinfo.Commit={{ .Commit }} -X github.com/sumup/sumup-cli/internal/buildinfo.Date={{ .Date }}
 
