@@ -198,7 +198,7 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	body := readers.CreateReaderBody{
+	body := readers.Create{
 		PairingCode: readers.ReaderPairingCode(cmd.String("pairing-code")),
 		Name:        readers.ReaderName(cmd.String("name")),
 	}
@@ -269,8 +269,8 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("amount is too large to convert into minor units")
 	}
 
-	body := readers.CreateReaderCheckoutBody{
-		TotalAmount: readers.CreateReaderCheckoutBodyTotalAmount{
+	body := readers.CreateCheckout{
+		TotalAmount: readers.CreateCheckoutTotalAmount{
 			Currency:  currency.Code(parsedCurrency),
 			MinorUnit: cmd.Int("minor-unit"),
 			Value:     int(value),
@@ -284,7 +284,7 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		body.ReturnURL = &returnURL
 	}
 	if cardType := cmd.String("card-type"); cardType != "" {
-		ct := readers.CreateReaderCheckoutBodyCardType(cardType)
+		ct := readers.CreateCheckoutCardType(cardType)
 		body.CardType = &ct
 	}
 	if cmd.IsSet("installments") {
@@ -341,7 +341,7 @@ func readerStatus(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	response, err := appCtx.Client.Readers.GetStatus(ctx, cmd.String("merchant-code"), readerID, readers.GetReaderStatusParams{})
+	response, err := appCtx.Client.Readers.GetStatus(ctx, cmd.String("merchant-code"), readerID, readers.GetStatusParams{})
 	if err != nil {
 		return fmt.Errorf("get reader status: %w", err)
 	}
@@ -380,7 +380,7 @@ func readerStatusBatteryLevel(v *float32) string {
 	return fmt.Sprintf("%.0f%%", *v)
 }
 
-func buildAffiliatePayload(cmd *cli.Command) (*readers.CreateReaderCheckoutBodyAffiliate, error) {
+func buildAffiliatePayload(cmd *cli.Command) (*readers.CreateCheckoutAffiliate, error) {
 	appID := cmd.String("affiliate-app-id")
 	key := cmd.String("affiliate-key")
 	foreignID := cmd.String("affiliate-foreign-transaction-id")
@@ -390,7 +390,7 @@ func buildAffiliatePayload(cmd *cli.Command) (*readers.CreateReaderCheckoutBodyA
 	if appID == "" || key == "" || foreignID == "" {
 		return nil, fmt.Errorf("affiliate requires --affiliate-app-id, --affiliate-key, and --affiliate-foreign-transaction-id")
 	}
-	return &readers.CreateReaderCheckoutBodyAffiliate{
+	return &readers.CreateCheckoutAffiliate{
 		AppID:                appID,
 		Key:                  key,
 		ForeignTransactionID: foreignID,

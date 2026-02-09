@@ -148,7 +148,7 @@ func debounce() tea.Cmd {
 func (m model) searchMemberships(query string, parentID string, parentType memberships.ResourceType) tea.Cmd {
 	return func() tea.Msg {
 		status := shared.MembershipStatusAccepted
-		params := memberships.ListMembershipsParams{
+		params := memberships.ListParams{
 			Status: &status,
 		}
 
@@ -378,7 +378,7 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 	message.Notify("Fetching your memberships...")
 
 	status := shared.MembershipStatusAccepted
-	params := memberships.ListMembershipsParams{
+	params := memberships.ListParams{
 		Status: &status,
 	}
 

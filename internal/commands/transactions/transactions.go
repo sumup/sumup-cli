@@ -111,7 +111,7 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	params := transactions.ListTransactionsV21Params{}
+	params := transactions.ListParams{}
 	if cmd.IsSet("limit") {
 		value := cmd.Int("limit")
 		params.Limit = &value
@@ -218,7 +218,7 @@ func getTransaction(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := transactions.GetTransactionV21Params{
+	params := transactions.GetParams{
 		ID: &transactionID,
 	}
 
