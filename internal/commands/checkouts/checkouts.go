@@ -99,7 +99,7 @@ func listCheckouts(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := checkouts.ListCheckoutsParams{}
+	params := checkouts.ListParams{}
 	if ref := cmd.String("checkout-reference"); ref != "" {
 		params.CheckoutReference = &ref
 	}
@@ -153,7 +153,7 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	body := checkouts.CreateCheckoutBody{
+	body := checkouts.Create{
 		CheckoutReference: cmd.String("reference"),
 		Amount:            float32(cmd.Float64("amount")),
 		Currency:          parsedCurrency,
@@ -173,7 +173,7 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		body.CustomerID = &value
 	}
 	if value := cmd.String("purpose"); value != "" {
-		purpose := checkouts.CreateCheckoutBodyPurpose(value)
+		purpose := checkouts.CreatePurpose(value)
 		body.Purpose = &purpose
 	}
 

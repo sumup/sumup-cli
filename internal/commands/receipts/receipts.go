@@ -57,7 +57,7 @@ func getReceipt(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := receipts.GetReceiptParams{
+	params := receipts.GetParams{
 		Mid: merchantCode,
 	}
 	if cmd.IsSet("transaction-event-id") {

@@ -65,7 +65,7 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := memberships.ListMembershipsParams{}
+	params := memberships.ListParams{}
 	if cmd.IsSet("offset") {
 		value := cmd.Int("offset")
 		params.Offset = &value

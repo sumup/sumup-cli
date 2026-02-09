@@ -140,7 +140,7 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	params := members.ListMerchantMembersParams{}
+	params := members.ListParams{}
 	if cmd.IsSet("offset") {
 		value := cmd.Int("offset")
 		params.Offset = &value
@@ -217,7 +217,7 @@ func createMember(ctx context.Context, cmd *cli.Command) error {
 	isManaged := true
 	password := secret.New(cmd.String("password"))
 
-	body := members.CreateMerchantMemberBody{
+	body := members.Create{
 		Email:         cmd.String("email"),
 		IsManagedUser: &isManaged,
 		Password:      &password,
@@ -254,7 +254,7 @@ func inviteMember(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	body := members.CreateMerchantMemberBody{
+	body := members.Create{
 		Email: cmd.String("email"),
 		Roles: []string{"role_employee"},
 	}

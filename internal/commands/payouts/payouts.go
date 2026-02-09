@@ -69,7 +69,7 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := payouts.ListPayoutsV1Params{
+	params := payouts.ListParams{
 		StartDate: startDate,
 		EndDate:   endDate,
 	}
