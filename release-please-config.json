@@ -1,0 +1,16 @@
+{
+	"$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+	"bump-minor-pre-major": true,
+	"bump-patch-for-minor-pre-major": false,
+	"draft": true,
+	"extra-label": "release",
+	"include-component-in-tag": false,
+	"include-v-in-tag": true,
+	"pull-request-header": "Automated sumup-cli release",
+	"pull-request-title-pattern": "release: ${version}",
+	"release-type": "go",
+	"versioning": "prerelease",
+	"packages": {
+		".": {}
+	}
+}
