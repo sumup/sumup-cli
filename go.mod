@@ -8,7 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/mergestat/timediff v0.0.4
 	github.com/shopspring/decimal v1.4.0
-	github.com/sumup/sumup-go v0.13.0
+	github.com/sumup/sumup-go v0.14.1
 	github.com/urfave/cli/v3 v3.6.2
 	golang.org/x/term v0.39.0
 )
