@@ -8,8 +8,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	sumup "github.com/sumup/sumup-go"
 	"github.com/sumup/sumup-go/datetime"
-	"github.com/sumup/sumup-go/payouts"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/display"
@@ -69,7 +69,7 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := payouts.ListParams{
+	params := sumup.PayoutsListParams{
 		StartDate: startDate,
 		EndDate:   endDate,
 	}
@@ -128,7 +128,7 @@ func parseDateArg(value string) (datetime.Date, error) {
 	return datetime.Date{Time: parsed}, nil
 }
 
-func payoutAmount(payout payouts.FinancialPayout) string {
+func payoutAmount(payout sumup.FinancialPayout) string {
 	if payout.Amount == nil {
 		return "-"
 	}

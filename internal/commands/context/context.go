@@ -6,14 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/urfave/cli/v3"
 
-	"github.com/sumup/sumup-go"
-	"github.com/sumup/sumup-go/memberships"
-	"github.com/sumup/sumup-go/shared"
+	sumup "github.com/sumup/sumup-go"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/config"
@@ -49,7 +47,7 @@ func NewCommand() *cli.Command {
 }
 
 type searchResultMsg struct {
-	memberships []memberships.Membership
+	memberships []sumup.Membership
 	err         error
 }
 
@@ -57,9 +55,9 @@ type searchResultMsg struct {
 type searchDebounceMsg struct{}
 
 type navigationLevel struct {
-	memberships []memberships.Membership
+	memberships []sumup.Membership
 	parentID    string
-	parentType  memberships.ResourceType
+	parentType  sumup.ResourceType
 	parentName  string
 }
 
@@ -73,7 +71,7 @@ type model struct {
 	// Current level being displayed
 	currentLevel navigationLevel
 	// Currently displayed items (filtered or all)
-	displayed []memberships.Membership
+	displayed []sumup.Membership
 	// Current cursor position in the list
 	cursor int
 	// Search input field
@@ -81,7 +79,7 @@ type model struct {
 	// Whether search mode is active
 	searching bool
 	// Selected membership (if any)
-	selected *memberships.Membership
+	selected *sumup.Membership
 	// Whether a search is in progress
 	loading bool
 	// Last executed search query to avoid duplicate requests
@@ -125,9 +123,9 @@ func (m *model) popLevel() {
 
 // drillDownIntoOrg navigates into an organization to view its child merchants
 func (m *model) drillDownIntoOrg(orgID, orgName string) tea.Cmd {
-	parentType := memberships.ResourceType("organization")
+	parentType := sumup.ResourceType("organization")
 	newLevel := navigationLevel{
-		memberships: []memberships.Membership{},
+		memberships: []sumup.Membership{},
 		parentID:    orgID,
 		parentType:  parentType,
 		parentName:  orgName,
@@ -145,10 +143,10 @@ func debounce() tea.Cmd {
 }
 
 // searchMemberships performs an API call to search for memberships by name
-func (m model) searchMemberships(query string, parentID string, parentType memberships.ResourceType) tea.Cmd {
+func (m model) searchMemberships(query string, parentID string, parentType sumup.ResourceType) tea.Cmd {
 	return func() tea.Msg {
-		status := shared.MembershipStatusAccepted
-		params := memberships.ListParams{
+		status := sumup.MembershipStatusAccepted
+		params := sumup.MembershipsListParams{
 			Status: &status,
 		}
 
@@ -203,7 +201,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = true
 		return m, m.searchMemberships(query, m.currentLevel.parentID, m.currentLevel.parentType)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -266,9 +264,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) View() string {
+func (m model) View() tea.View {
 	if m.err != nil {
-		return fmt.Sprintf("Error: %v\n", m.err)
+		return tea.NewView(fmt.Sprintf("Error: %v\n", m.err))
 	}
 
 	var s strings.Builder
@@ -366,7 +364,7 @@ func (m model) View() string {
 		s.WriteString(helpStyle.Render(help))
 	}
 
-	return s.String()
+	return tea.NewView(s.String())
 }
 
 func setContext(ctx context.Context, cmd *cli.Command) error {
@@ -375,10 +373,10 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	message.Notify("Fetching your memberships...")
+	message.Notify("Fetching your sumup...")
 
-	status := shared.MembershipStatusAccepted
-	params := memberships.ListParams{
+	status := sumup.MembershipStatusAccepted
+	params := sumup.MembershipsListParams{
 		Status: &status,
 	}
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/shopspring/decimal"
-	"github.com/sumup/sumup-go/shared"
+	sumup "github.com/sumup/sumup-go"
 )
 
 type symbolPosition int
@@ -22,44 +22,44 @@ type currencyInfo struct {
 	position symbolPosition
 }
 
-var infoByCurrency = map[shared.Currency]currencyInfo{
-	shared.CurrencyBGN: {symbol: "лв", decimals: 2, position: positionAfter},
-	shared.CurrencyBRL: {symbol: "R$", decimals: 2, position: positionBefore},
-	shared.CurrencyCHF: {symbol: "CHF ", decimals: 2, position: positionBefore},
-	shared.CurrencyCLP: {symbol: "$", decimals: 0, position: positionBefore},
-	shared.CurrencyCZK: {symbol: "Kč", decimals: 2, position: positionAfter},
-	shared.CurrencyDKK: {symbol: "kr", decimals: 2, position: positionAfter},
-	shared.CurrencyEUR: {symbol: "€", decimals: 2, position: positionAfterNoSpace},
-	shared.CurrencyGBP: {symbol: "£", decimals: 2, position: positionBefore},
-	shared.CurrencyHRK: {symbol: "kn", decimals: 2, position: positionAfter},
-	shared.CurrencyHUF: {symbol: "Ft", decimals: 0, position: positionAfter},
-	shared.CurrencyNOK: {symbol: "kr", decimals: 2, position: positionAfter},
-	shared.CurrencyPLN: {symbol: "zł", decimals: 2, position: positionAfter},
-	shared.CurrencyRON: {symbol: "lei", decimals: 2, position: positionAfter},
-	shared.CurrencySEK: {symbol: "kr", decimals: 2, position: positionAfter},
-	shared.CurrencyUSD: {symbol: "$", decimals: 2, position: positionBefore},
+var infoByCurrency = map[sumup.Currency]currencyInfo{
+	sumup.CurrencyBGN: {symbol: "лв", decimals: 2, position: positionAfter},
+	sumup.CurrencyBRL: {symbol: "R$", decimals: 2, position: positionBefore},
+	sumup.CurrencyCHF: {symbol: "CHF ", decimals: 2, position: positionBefore},
+	sumup.CurrencyCLP: {symbol: "$", decimals: 0, position: positionBefore},
+	sumup.CurrencyCZK: {symbol: "Kč", decimals: 2, position: positionAfter},
+	sumup.CurrencyDKK: {symbol: "kr", decimals: 2, position: positionAfter},
+	sumup.CurrencyEUR: {symbol: "€", decimals: 2, position: positionAfterNoSpace},
+	sumup.CurrencyGBP: {symbol: "£", decimals: 2, position: positionBefore},
+	sumup.CurrencyHRK: {symbol: "kn", decimals: 2, position: positionAfter},
+	sumup.CurrencyHUF: {symbol: "Ft", decimals: 0, position: positionAfter},
+	sumup.CurrencyNOK: {symbol: "kr", decimals: 2, position: positionAfter},
+	sumup.CurrencyPLN: {symbol: "zł", decimals: 2, position: positionAfter},
+	sumup.CurrencyRON: {symbol: "lei", decimals: 2, position: positionAfter},
+	sumup.CurrencySEK: {symbol: "kr", decimals: 2, position: positionAfter},
+	sumup.CurrencyUSD: {symbol: "$", decimals: 2, position: positionBefore},
 }
 
-var codeToCurrency = map[string]shared.Currency{
-	"BGN": shared.CurrencyBGN,
-	"BRL": shared.CurrencyBRL,
-	"CHF": shared.CurrencyCHF,
-	"CLP": shared.CurrencyCLP,
-	"CZK": shared.CurrencyCZK,
-	"DKK": shared.CurrencyDKK,
-	"EUR": shared.CurrencyEUR,
-	"GBP": shared.CurrencyGBP,
-	"HRK": shared.CurrencyHRK,
-	"HUF": shared.CurrencyHUF,
-	"NOK": shared.CurrencyNOK,
-	"PLN": shared.CurrencyPLN,
-	"RON": shared.CurrencyRON,
-	"SEK": shared.CurrencySEK,
-	"USD": shared.CurrencyUSD,
+var codeToCurrency = map[string]sumup.Currency{
+	"BGN": sumup.CurrencyBGN,
+	"BRL": sumup.CurrencyBRL,
+	"CHF": sumup.CurrencyCHF,
+	"CLP": sumup.CurrencyCLP,
+	"CZK": sumup.CurrencyCZK,
+	"DKK": sumup.CurrencyDKK,
+	"EUR": sumup.CurrencyEUR,
+	"GBP": sumup.CurrencyGBP,
+	"HRK": sumup.CurrencyHRK,
+	"HUF": sumup.CurrencyHUF,
+	"NOK": sumup.CurrencyNOK,
+	"PLN": sumup.CurrencyPLN,
+	"RON": sumup.CurrencyRON,
+	"SEK": sumup.CurrencySEK,
+	"USD": sumup.CurrencyUSD,
 }
 
 // Format renders an amount with a currency symbol.
-func Format(amount float64, currency shared.Currency) string {
+func Format(amount float64, currency sumup.Currency) string {
 	info, ok := infoByCurrency[currency]
 	if !ok {
 		return fmt.Sprintf("%.*f %s", 2, amount, string(currency))
@@ -76,7 +76,7 @@ func Format(amount float64, currency shared.Currency) string {
 }
 
 // FormatPointers renders optional amount and currency pointers.
-func FormatPointers(amount *float32, currency *shared.Currency) string {
+func FormatPointers(amount *float32, currency *sumup.Currency) string {
 	if amount == nil {
 		return "-"
 	}
@@ -87,7 +87,7 @@ func FormatPointers(amount *float32, currency *shared.Currency) string {
 }
 
 // Parse converts a string into a SumUp currency value.
-func Parse(value string) (shared.Currency, error) {
+func Parse(value string) (sumup.Currency, error) {
 	normalized := strings.TrimSpace(strings.ToUpper(value))
 	currency, ok := codeToCurrency[normalized]
 	if !ok {
@@ -122,7 +122,7 @@ func Supported() []string {
 }
 
 // Code returns the ISO code string representation of the currency.
-func Code(currency shared.Currency) string {
+func Code(currency sumup.Currency) string {
 	return string(currency)
 }
 

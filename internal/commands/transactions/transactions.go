@@ -8,8 +8,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/sumup/sumup-go/shared"
-	"github.com/sumup/sumup-go/transactions"
+	sumup "github.com/sumup/sumup-go"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
@@ -111,7 +110,7 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	params := transactions.ListParams{}
+	params := sumup.TransactionsListParams{}
 	if cmd.IsSet("limit") {
 		value := cmd.Int("limit")
 		params.Limit = &value
@@ -144,12 +143,12 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 		params.Order = &value
 	}
 	if values := cmd.StringSlice("payment-type"); len(values) > 0 {
-		types := make([]shared.PaymentType, 0, len(values))
+		types := make([]sumup.PaymentType, 0, len(values))
 		for _, v := range values {
 			if v == "" {
 				continue
 			}
-			types = append(types, shared.PaymentType(v))
+			types = append(types, sumup.PaymentType(v))
 		}
 		if len(types) > 0 {
 			params.PaymentTypes = types
@@ -176,7 +175,7 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 
 	items := response.Items
 	if items == nil {
-		items = []transactions.TransactionHistory{}
+		items = []sumup.TransactionHistory{}
 	}
 
 	if appCtx.JSONOutput {
@@ -218,7 +217,7 @@ func getTransaction(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := transactions.GetParams{
+	params := sumup.TransactionsGetParams{
 		ID: &transactionID,
 	}
 
@@ -235,7 +234,7 @@ func getTransaction(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func renderTransactionDetails(appCtx *app.Context, transaction *transactions.TransactionFull) {
+func renderTransactionDetails(appCtx *app.Context, transaction *sumup.TransactionFull) {
 	status := "-"
 	if transaction.Status != nil && *transaction.Status != "" {
 		status = string(*transaction.Status)
@@ -258,7 +257,7 @@ func renderTransactionDetails(appCtx *app.Context, transaction *transactions.Tra
 	})
 }
 
-func transactionCardLabel(card *transactions.CardResponse) string {
+func transactionCardLabel(card *sumup.CardResponse) string {
 	if card == nil {
 		return "-"
 	}

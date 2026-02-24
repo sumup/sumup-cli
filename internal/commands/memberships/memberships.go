@@ -8,8 +8,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/sumup/sumup-go/memberships"
-	"github.com/sumup/sumup-go/shared"
+	sumup "github.com/sumup/sumup-go"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/display"
@@ -19,7 +18,7 @@ import (
 func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "memberships",
-		Usage: "Commands related to memberships.",
+		Usage: "Commands related to sumup.",
 		Commands: []*cli.Command{
 			{
 				Name:   "list",
@@ -65,7 +64,7 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := memberships.ListParams{}
+	params := sumup.MembershipsListParams{}
 	if cmd.IsSet("offset") {
 		value := cmd.Int("offset")
 		params.Offset = &value
@@ -75,7 +74,7 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 		params.Limit = &value
 	}
 	if value := cmd.String("kind"); value != "" {
-		kind := memberships.ResourceType(value)
+		kind := sumup.ResourceType(value)
 		params.Kind = &kind
 	}
 	if value := cmd.String("status"); value != "" {
@@ -86,7 +85,7 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 		params.Status = &status
 	}
 	if value := cmd.String("resource-type"); value != "" {
-		resourceType := memberships.ResourceType(value)
+		resourceType := sumup.ResourceType(value)
 		params.ResourceType = &resourceType
 	}
 	if value := cmd.String("resource-name"); value != "" {
@@ -126,18 +125,18 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func parseMembershipStatus(value string) (shared.MembershipStatus, error) {
+func parseMembershipStatus(value string) (sumup.MembershipStatus, error) {
 	switch strings.ToLower(value) {
 	case "accepted":
-		return shared.MembershipStatusAccepted, nil
+		return sumup.MembershipStatusAccepted, nil
 	case "pending":
-		return shared.MembershipStatusPending, nil
+		return sumup.MembershipStatusPending, nil
 	case "expired":
-		return shared.MembershipStatusExpired, nil
+		return sumup.MembershipStatusExpired, nil
 	case "disabled":
-		return shared.MembershipStatusDisabled, nil
+		return sumup.MembershipStatusDisabled, nil
 	case "unknown":
-		return shared.MembershipStatusUnknown, nil
+		return sumup.MembershipStatusUnknown, nil
 	default:
 		return "", fmt.Errorf("unsupported status %q", value)
 	}
@@ -150,15 +149,15 @@ func memberRoles(roles []string) string {
 	return strings.Join(roles, ", ")
 }
 
-func membershipStatusLabel(status shared.MembershipStatus) string {
+func membershipStatusLabel(status sumup.MembershipStatus) string {
 	switch status {
-	case shared.MembershipStatusAccepted:
+	case sumup.MembershipStatusAccepted:
 		return "Accepted"
-	case shared.MembershipStatusPending:
+	case sumup.MembershipStatusPending:
 		return "Pending"
-	case shared.MembershipStatusExpired:
+	case sumup.MembershipStatusExpired:
 		return "Expired"
-	case shared.MembershipStatusDisabled:
+	case sumup.MembershipStatusDisabled:
 		return "Disabled"
 	default:
 		return "Unknown"

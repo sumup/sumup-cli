@@ -1,5 +1,5 @@
 package display
 
-import "github.com/charmbracelet/lipgloss"
+import "charm.land/lipgloss/v2"
 
-const SumUpPink = lipgloss.Color("#FF61F2")
+var SumUpPink = lipgloss.Color("#FF61F2")

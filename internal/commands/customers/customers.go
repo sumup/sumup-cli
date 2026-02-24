@@ -6,7 +6,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/sumup/sumup-go/customers"
+	sumup "github.com/sumup/sumup-go"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
@@ -17,7 +17,7 @@ import (
 func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "customers",
-		Usage: "Commands for managing customers.",
+		Usage: "Commands for managing sumup.",
 		Commands: []*cli.Command{
 			{
 				Name:      "list",
@@ -66,7 +66,7 @@ func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func paymentInstrumentType(instrument *customers.PaymentInstrumentResponse) string {
+func paymentInstrumentType(instrument *sumup.PaymentInstrumentResponse) string {
 	if instrument.Type != nil {
 		value := string(*instrument.Type)
 		if value != "" {
@@ -82,7 +82,7 @@ func paymentInstrumentType(instrument *customers.PaymentInstrumentResponse) stri
 	return "-"
 }
 
-func lastFour(instrument *customers.PaymentInstrumentResponse) string {
+func lastFour(instrument *sumup.PaymentInstrumentResponse) string {
 	if instrument.Card != nil && instrument.Card.Last4Digits != nil && *instrument.Card.Last4Digits != "" {
 		return *instrument.Card.Last4Digits
 	}

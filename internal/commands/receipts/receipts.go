@@ -8,7 +8,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/sumup/sumup-go/receipts"
+	sumup "github.com/sumup/sumup-go"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
@@ -34,7 +34,7 @@ func NewCommand() *cli.Command {
 					},
 					&cli.IntFlag{
 						Name:  "transaction-event-id",
-						Usage: "Transaction event ID for refund receipts.",
+						Usage: "Transaction event ID for refund sumup.",
 					},
 				},
 			},
@@ -57,7 +57,7 @@ func getReceipt(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := receipts.GetParams{
+	params := sumup.ReceiptsGetParams{
 		Mid: merchantCode,
 	}
 	if cmd.IsSet("transaction-event-id") {
@@ -78,7 +78,7 @@ func getReceipt(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func renderReceipt(receipt *receipts.Receipt) {
+func renderReceipt(receipt *sumup.Receipt) {
 	if transaction := receipt.TransactionData; transaction != nil {
 		fmt.Println("Transaction")
 		display.DataList([]attribute.KeyValue{
@@ -136,7 +136,7 @@ func renderReceipt(receipt *receipts.Receipt) {
 	}
 }
 
-func receiptAmount(transaction *receipts.ReceiptTransaction) string {
+func receiptAmount(transaction *sumup.ReceiptTransaction) string {
 	switch {
 	case transaction.Amount != nil && transaction.Currency != nil:
 		return fmt.Sprintf("%s %s", *transaction.Amount, *transaction.Currency)
@@ -147,7 +147,7 @@ func receiptAmount(transaction *receipts.ReceiptTransaction) string {
 	}
 }
 
-func receiptCard(transaction *receipts.ReceiptTransaction) string {
+func receiptCard(transaction *sumup.ReceiptTransaction) string {
 	card := transaction.Card
 	if card == nil {
 		return "-"
@@ -164,7 +164,7 @@ func receiptCard(transaction *receipts.ReceiptTransaction) string {
 	}
 }
 
-func formatAddress(address *receipts.ReceiptMerchantDataMerchantProfileAddress) string {
+func formatAddress(address *sumup.ReceiptMerchantDataMerchantProfileAddress) string {
 	parts := []string{}
 	if address.AddressLine1 != nil && *address.AddressLine1 != "" {
 		parts = append(parts, *address.AddressLine1)
