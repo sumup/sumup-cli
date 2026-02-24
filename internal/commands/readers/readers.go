@@ -9,8 +9,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/sumup/sumup-go/readers"
-	"github.com/sumup/sumup-go/shared"
+	sumup "github.com/sumup/sumup-go"
+	"github.com/sumup/sumup-go/nullable"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
@@ -198,13 +198,13 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	body := readers.Create{
-		PairingCode: readers.ReaderPairingCode(cmd.String("pairing-code")),
-		Name:        readers.ReaderName(cmd.String("name")),
+	body := sumup.ReadersCreateParams{
+		PairingCode: sumup.ReaderPairingCode(cmd.String("pairing-code")),
+		Name:        sumup.ReaderName(cmd.String("name")),
 	}
 
 	reader, err := appCtx.Client.Readers.Create(ctx, cmd.String("merchant-code"), body)
-	if pErr := new(shared.Problem); errors.As(err, &pErr) {
+	if pErr := new(sumup.Problem); errors.As(err, &pErr) {
 		return fmt.Errorf("create reader: %v %v", *pErr.Detail, *pErr.Title)
 	} else if err != nil {
 		return fmt.Errorf("create reader: %w", err)
@@ -235,7 +235,7 @@ func deleteReader(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	err = appCtx.Client.Readers.Delete(ctx, cmd.String("merchant-code"), readers.ReaderID(readerID))
+	err = appCtx.Client.Readers.Delete(ctx, cmd.String("merchant-code"), sumup.ReaderID(readerID))
 	if err != nil {
 		return fmt.Errorf("delete reader: %w", err)
 	}
@@ -269,8 +269,8 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("amount is too large to convert into minor units")
 	}
 
-	body := readers.CreateCheckout{
-		TotalAmount: readers.CreateCheckoutTotalAmount{
+	body := sumup.ReadersCreateCheckoutParams{
+		TotalAmount: sumup.CreateCheckoutRequestTotalAmount{
 			Currency:  currency.Code(parsedCurrency),
 			MinorUnit: cmd.Int("minor-unit"),
 			Value:     int(value),
@@ -284,12 +284,12 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		body.ReturnURL = &returnURL
 	}
 	if cardType := cmd.String("card-type"); cardType != "" {
-		ct := readers.CreateCheckoutCardType(cardType)
+		ct := sumup.CreateCheckoutRequestCardType(cardType)
 		body.CardType = &ct
 	}
 	if cmd.IsSet("installments") {
 		value := cmd.Int("installments")
-		body.Installments = &value
+		body.Installments = nullable.Int(value)
 	}
 	if cmd.IsSet("tip-timeout") {
 		value := cmd.Int("tip-timeout")
@@ -307,7 +307,7 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 	if affiliate != nil {
-		body.Affiliate = affiliate
+		body.Affiliate = nullable.Value(*affiliate)
 	}
 
 	response, err := appCtx.Client.Readers.CreateCheckout(ctx, cmd.String("merchant-code"), readerID, body)
@@ -341,7 +341,7 @@ func readerStatus(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	response, err := appCtx.Client.Readers.GetStatus(ctx, cmd.String("merchant-code"), readerID, readers.GetStatusParams{})
+	response, err := appCtx.Client.Readers.GetStatus(ctx, cmd.String("merchant-code"), readerID, sumup.ReadersGetStatusParams{})
 	if err != nil {
 		return fmt.Errorf("get reader status: %w", err)
 	}
@@ -379,7 +379,7 @@ func readerStatusBatteryLevel(v *float32) string {
 	return fmt.Sprintf("%.0f%%", *v)
 }
 
-func buildAffiliatePayload(cmd *cli.Command) (*readers.CreateCheckoutAffiliate, error) {
+func buildAffiliatePayload(cmd *cli.Command) (*sumup.CreateCheckoutRequestAffiliate, error) {
 	appID := cmd.String("affiliate-app-id")
 	key := cmd.String("affiliate-key")
 	foreignID := cmd.String("affiliate-foreign-transaction-id")
@@ -389,7 +389,7 @@ func buildAffiliatePayload(cmd *cli.Command) (*readers.CreateCheckoutAffiliate, 
 	if appID == "" || key == "" || foreignID == "" {
 		return nil, fmt.Errorf("affiliate requires --affiliate-app-id, --affiliate-key, and --affiliate-foreign-transaction-id")
 	}
-	return &readers.CreateCheckoutAffiliate{
+	return &sumup.CreateCheckoutRequestAffiliate{
 		AppID:                appID,
 		Key:                  key,
 		ForeignTransactionID: foreignID,

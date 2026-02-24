@@ -8,7 +8,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/sumup/sumup-go/checkouts"
+	sumup "github.com/sumup/sumup-go"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
@@ -21,7 +21,7 @@ import (
 func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "checkouts",
-		Usage: "Commands related to hosted checkouts.",
+		Usage: "Commands related to hosted sumup.",
 		Commands: []*cli.Command{
 			{
 				Name:   "list",
@@ -99,7 +99,7 @@ func listCheckouts(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	params := checkouts.ListParams{}
+	params := sumup.CheckoutsListParams{}
 	if ref := cmd.String("checkout-reference"); ref != "" {
 		params.CheckoutReference = &ref
 	}
@@ -153,7 +153,7 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	body := checkouts.Create{
+	body := sumup.CheckoutsCreateParams{
 		CheckoutReference: cmd.String("reference"),
 		Amount:            float32(cmd.Float64("amount")),
 		Currency:          parsedCurrency,
@@ -173,7 +173,7 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		body.CustomerID = &value
 	}
 	if value := cmd.String("purpose"); value != "" {
-		purpose := checkouts.CreatePurpose(value)
+		purpose := sumup.CheckoutCreateRequestPurpose(value)
 		body.Purpose = &purpose
 	}
 
@@ -231,7 +231,9 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 		details = append(details, attribute.Attribute("Status", attribute.Styled(string(*checkout.Status))))
 	}
 	if checkout.ValidUntil != nil {
-		details = append(details, attribute.Attribute("Valid Until", attribute.Styled(checkout.ValidUntil.UTC().Format(time.RFC3339))))
+		if validUntil := checkout.ValidUntil.Value(); validUntil != nil {
+			details = append(details, attribute.Attribute("Valid Until", attribute.Styled(validUntil.UTC().Format(time.RFC3339))))
+		}
 	}
 	display.DataList(details)
 	return nil

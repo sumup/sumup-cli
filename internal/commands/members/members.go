@@ -8,9 +8,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/sumup/sumup-go/members"
+	sumup "github.com/sumup/sumup-go"
 	"github.com/sumup/sumup-go/secret"
-	"github.com/sumup/sumup-go/shared"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
@@ -22,7 +21,7 @@ import (
 func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "members",
-		Usage: "Commands related to merchant members.",
+		Usage: "Commands related to merchant sumup.",
 		Commands: []*cli.Command{
 			{
 				Name:   "list",
@@ -140,7 +139,7 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	params := members.ListParams{}
+	params := sumup.MembersListParams{}
 	if cmd.IsSet("offset") {
 		value := cmd.Int("offset")
 		params.Offset = &value
@@ -217,7 +216,7 @@ func createMember(ctx context.Context, cmd *cli.Command) error {
 	isManaged := true
 	password := secret.New(cmd.String("password"))
 
-	body := members.Create{
+	body := sumup.MembersCreateParams{
 		Email:         cmd.String("email"),
 		IsManagedUser: &isManaged,
 		Password:      &password,
@@ -254,7 +253,7 @@ func inviteMember(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	body := members.Create{
+	body := sumup.MembersCreateParams{
 		Email: cmd.String("email"),
 		Roles: []string{"role_employee"},
 	}
@@ -298,24 +297,24 @@ func deleteMember(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func parseMembershipStatus(value string) (shared.MembershipStatus, error) {
+func parseMembershipStatus(value string) (sumup.MembershipStatus, error) {
 	switch strings.ToLower(value) {
 	case "accepted":
-		return shared.MembershipStatusAccepted, nil
+		return sumup.MembershipStatusAccepted, nil
 	case "pending":
-		return shared.MembershipStatusPending, nil
+		return sumup.MembershipStatusPending, nil
 	case "expired":
-		return shared.MembershipStatusExpired, nil
+		return sumup.MembershipStatusExpired, nil
 	case "disabled":
-		return shared.MembershipStatusDisabled, nil
+		return sumup.MembershipStatusDisabled, nil
 	case "unknown":
-		return shared.MembershipStatusUnknown, nil
+		return sumup.MembershipStatusUnknown, nil
 	default:
 		return "", fmt.Errorf("unsupported status %q", value)
 	}
 }
 
-func memberEmail(member members.Member) string {
+func memberEmail(member sumup.Member) string {
 	if member.User != nil && member.User.Email != "" {
 		return member.User.Email
 	}
@@ -332,15 +331,15 @@ func memberRoles(roles []string) string {
 	return strings.Join(roles, ", ")
 }
 
-func membershipStatusLabel(status shared.MembershipStatus) string {
+func membershipStatusLabel(status sumup.MembershipStatus) string {
 	switch status {
-	case shared.MembershipStatusAccepted:
+	case sumup.MembershipStatusAccepted:
 		return "Accepted"
-	case shared.MembershipStatusPending:
+	case sumup.MembershipStatusPending:
 		return "Pending"
-	case shared.MembershipStatusExpired:
+	case sumup.MembershipStatusExpired:
 		return "Expired"
-	case shared.MembershipStatusDisabled:
+	case sumup.MembershipStatusDisabled:
 		return "Disabled"
 	default:
 		return "Unknown"
