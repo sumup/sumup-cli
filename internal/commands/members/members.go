@@ -21,7 +21,7 @@ import (
 func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "members",
-		Usage: "Commands related to merchant sumup.",
+		Usage: "Commands related to merchant members.",
 		Commands: []*cli.Command{
 			{
 				Name:   "list",
@@ -91,6 +91,44 @@ func NewCommand() *cli.Command {
 					&cli.StringFlag{
 						Name:  "nickname",
 						Usage: "Nickname for the member.",
+					},
+				},
+			},
+			{
+				Name:      "get",
+				Usage:     "Get a member from the merchant account.",
+				Action:    getMember,
+				ArgsUsage: "<member-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the member. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
+					},
+				},
+			},
+			{
+				Name:      "update",
+				Usage:     "Update a member in the merchant account.",
+				Action:    updateMember,
+				ArgsUsage: "<member-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the member. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
+					},
+					&cli.StringSliceFlag{
+						Name:  "role",
+						Usage: "Roles to assign to the member (repeat flag for multiple roles).",
+					},
+					&cli.StringFlag{
+						Name:  "nickname",
+						Usage: "Nickname for managed users.",
+					},
+					&cli.StringFlag{
+						Name:  "password",
+						Usage: "Password for managed users.",
 					},
 				},
 			},
@@ -274,6 +312,97 @@ func inviteMember(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+func getMember(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
+
+	memberID, err := util.RequireSingleArg(cmd, "member ID")
+	if err != nil {
+		return err
+	}
+
+	member, err := appCtx.Client.Members.Get(ctx, merchantCode, memberID)
+	if err != nil {
+		return fmt.Errorf("get member: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(member)
+	}
+
+	renderMember(member)
+	return nil
+}
+
+func updateMember(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
+
+	memberID, err := util.RequireSingleArg(cmd, "member ID")
+	if err != nil {
+		return err
+	}
+
+	body := sumup.MembersUpdateParams{}
+	changeCount := 0
+
+	if roles := cmd.StringSlice("role"); len(roles) > 0 {
+		body.Roles = roles
+		changeCount++
+	}
+
+	var user *sumup.MembersUpdateParamsUser
+	if nickname := cmd.String("nickname"); nickname != "" {
+		if user == nil {
+			user = &sumup.MembersUpdateParamsUser{}
+		}
+		user.Nickname = &nickname
+		changeCount++
+	}
+	if password := cmd.String("password"); password != "" {
+		if user == nil {
+			user = &sumup.MembersUpdateParamsUser{}
+		}
+		p := secret.New(password)
+		user.Password = &p
+		changeCount++
+	}
+	if user != nil {
+		body.User = user
+	}
+
+	if changeCount == 0 {
+		return fmt.Errorf("no update fields provided")
+	}
+
+	member, err := appCtx.Client.Members.Update(ctx, merchantCode, memberID, body)
+	if err != nil {
+		return fmt.Errorf("update member: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(member)
+	}
+
+	message.Success("Member updated")
+	renderMember(member)
+	return nil
+}
+
 func deleteMember(ctx context.Context, cmd *cli.Command) error {
 	appCtx, err := app.GetAppContext(cmd)
 	if err != nil {
@@ -344,4 +473,33 @@ func membershipStatusLabel(status sumup.MembershipStatus) string {
 	default:
 		return "Unknown"
 	}
+}
+
+func renderMember(member *sumup.Member) {
+	if member == nil {
+		return
+	}
+
+	var createdAt, updatedAt string
+	createdAt = member.CreatedAt.UTC().Format(time.RFC3339)
+	updatedAt = member.UpdatedAt.UTC().Format(time.RFC3339)
+
+	details := []attribute.KeyValue{
+		attribute.ID(member.ID),
+		attribute.Attribute("Email", attribute.Styled(memberEmail(*member))),
+		attribute.Attribute("Roles", attribute.Styled(memberRoles(member.Roles))),
+		attribute.Attribute("Status", attribute.Styled(membershipStatusLabel(member.Status))),
+		attribute.Attribute("Nickname", attribute.Styled(memberNickname(member))),
+		attribute.Attribute("Created At", attribute.Styled(createdAt)),
+		attribute.Attribute("Updated At", attribute.Styled(updatedAt)),
+	}
+
+	display.DataList(details)
+}
+
+func memberNickname(member *sumup.Member) string {
+	if member != nil && member.User != nil && member.User.Nickname != nil && *member.User.Nickname != "" {
+		return *member.User.Nickname
+	}
+	return "-"
 }
