@@ -3,88 +3,330 @@ package customers
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/urfave/cli/v3"
 
 	sumup "github.com/sumup/sumup-go"
+	"github.com/sumup/sumup-go/datetime"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
 	"github.com/sumup/sumup-cli/internal/display/attribute"
+	"github.com/sumup/sumup-cli/internal/display/message"
 )
 
 func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "customers",
-		Usage: "Commands for managing sumup.",
+		Usage: "Commands for managing customers.",
 		Commands: []*cli.Command{
 			{
-				Name:      "list",
-				Usage:     "List saved payment instruments for a customer.",
-				Action:    listPaymentInstruments,
+				Name:   "create",
+				Usage:  "Create a customer.",
+				Action: createCustomer,
+				Flags:  customerDetailsFlags(),
+			},
+			{
+				Name:      "get",
+				Usage:     "Get a customer by ID.",
+				Action:    getCustomer,
 				ArgsUsage: "<customer-id>",
+			},
+			{
+				Name:      "update",
+				Usage:     "Update customer details.",
+				Action:    updateCustomer,
+				ArgsUsage: "<customer-id>",
+				Flags:     customerDetailsFlags(),
 			},
 		},
 	}
 }
 
-func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
+func customerDetailsFlags() []cli.Flag {
+	return []cli.Flag{
+		&cli.StringFlag{
+			Name:  "first-name",
+			Usage: "Customer first name.",
+		},
+		&cli.StringFlag{
+			Name:  "last-name",
+			Usage: "Customer last name.",
+		},
+		&cli.StringFlag{
+			Name:  "email",
+			Usage: "Customer email address.",
+		},
+		&cli.StringFlag{
+			Name:  "phone",
+			Usage: "Customer phone number.",
+		},
+		&cli.StringFlag{
+			Name:  "tax-id",
+			Usage: "Customer tax identifier.",
+		},
+		&cli.StringFlag{
+			Name:  "birth-date",
+			Usage: "Customer birth date in YYYY-MM-DD format.",
+		},
+		&cli.StringFlag{
+			Name:  "address-line-1",
+			Usage: "Address line 1.",
+		},
+		&cli.StringFlag{
+			Name:  "address-line-2",
+			Usage: "Address line 2.",
+		},
+		&cli.StringFlag{
+			Name:  "address-city",
+			Usage: "Address city.",
+		},
+		&cli.StringFlag{
+			Name:  "address-postal-code",
+			Usage: "Address postal code.",
+		},
+		&cli.StringFlag{
+			Name:  "address-state",
+			Usage: "Address state.",
+		},
+		&cli.StringFlag{
+			Name:  "address-country",
+			Usage: "Address country code (ISO 3166-1 alpha-2).",
+		},
+	}
+}
+
+func createCustomer(ctx context.Context, cmd *cli.Command) error {
 	appCtx, err := app.GetAppContext(cmd)
 	if err != nil {
 		return err
 	}
+
+	personalDetails, _, err := customerDetailsFromFlags(cmd)
+	if err != nil {
+		return err
+	}
+
+	body := sumup.CustomersCreateParams{
+		PersonalDetails: personalDetails,
+	}
+	customer, err := appCtx.Client.Customers.Create(ctx, body)
+	if err != nil {
+		return fmt.Errorf("create customer: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(customer)
+	}
+
+	message.Success("Customer created")
+	renderCustomer(customer)
+	return nil
+}
+
+func getCustomer(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+
 	customerID, err := util.RequireSingleArg(cmd, "customer ID")
 	if err != nil {
 		return err
 	}
-	instruments, err := appCtx.Client.Customers.ListPaymentInstruments(ctx, customerID)
+
+	customer, err := appCtx.Client.Customers.Get(ctx, customerID)
 	if err != nil {
-		return fmt.Errorf("list customer payment instruments: %w", err)
+		return fmt.Errorf("get customer: %w", err)
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(instruments)
+		return display.PrintJSON(customer)
 	}
 
-	rows := make([][]attribute.Value, 0, len(*instruments))
-	for _, instrument := range *instruments {
-		rows = append(rows, []attribute.Value{
-			attribute.OptionalStringValue(instrument.Token),
-			attribute.ValueOf(paymentInstrumentType(&instrument)),
-			attribute.ValueOf(lastFour(&instrument)),
-			attribute.ValueOf(util.BoolLabel(instrument.Active)),
-			attribute.ValueOf(util.TimeOrDash(appCtx, instrument.CreatedAt)),
-		})
-	}
-
-	display.RenderTable(
-		"Payment Instruments",
-		[]string{"Token", "Type", "Last 4", "Active", "Created At"},
-		rows,
-	)
+	renderCustomer(customer)
 	return nil
 }
 
-func paymentInstrumentType(instrument *sumup.PaymentInstrumentResponse) string {
-	if instrument.Type != nil {
-		value := string(*instrument.Type)
-		if value != "" {
-			return value
-		}
+func updateCustomer(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
 	}
-	if instrument.Card != nil && instrument.Card.Type != nil {
-		value := string(*instrument.Card.Type)
-		if value != "" {
-			return value
-		}
+
+	customerID, err := util.RequireSingleArg(cmd, "customer ID")
+	if err != nil {
+		return err
 	}
-	return "-"
+
+	personalDetails, changedCount, err := customerDetailsFromFlags(cmd)
+	if err != nil {
+		return err
+	}
+	if changedCount == 0 {
+		return fmt.Errorf("no update fields provided")
+	}
+
+	body := sumup.CustomersUpdateParams{
+		PersonalDetails: personalDetails,
+	}
+	customer, err := appCtx.Client.Customers.Update(ctx, customerID, body)
+	if err != nil {
+		return fmt.Errorf("update customer: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(customer)
+	}
+
+	message.Success("Customer updated")
+	renderCustomer(customer)
+	return nil
 }
 
-func lastFour(instrument *sumup.PaymentInstrumentResponse) string {
-	if instrument.Card != nil && instrument.Card.Last4Digits != nil && *instrument.Card.Last4Digits != "" {
-		return *instrument.Card.Last4Digits
+func customerDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails, int, error) {
+	details := &sumup.PersonalDetails{}
+	changedCount := 0
+
+	if value := cmd.String("first-name"); value != "" {
+		details.FirstName = &value
+		changedCount++
 	}
-	return "-"
+	if value := cmd.String("last-name"); value != "" {
+		details.LastName = &value
+		changedCount++
+	}
+	if value := cmd.String("email"); value != "" {
+		details.Email = &value
+		changedCount++
+	}
+	if value := cmd.String("phone"); value != "" {
+		details.Phone = &value
+		changedCount++
+	}
+	if value := cmd.String("tax-id"); value != "" {
+		details.TaxID = &value
+		changedCount++
+	}
+	if value := cmd.String("birth-date"); value != "" {
+		parsedDate, err := parseDate(value)
+		if err != nil {
+			return nil, 0, err
+		}
+		details.BirthDate = parsedDate
+		changedCount++
+	}
+
+	var address sumup.AddressLegacy
+	addressChanged := false
+	if value := cmd.String("address-line-1"); value != "" {
+		address.Line1 = &value
+		addressChanged = true
+		changedCount++
+	}
+	if value := cmd.String("address-line-2"); value != "" {
+		address.Line2 = &value
+		addressChanged = true
+		changedCount++
+	}
+	if value := cmd.String("address-city"); value != "" {
+		address.City = &value
+		addressChanged = true
+		changedCount++
+	}
+	if value := cmd.String("address-postal-code"); value != "" {
+		address.PostalCode = &value
+		addressChanged = true
+		changedCount++
+	}
+	if value := cmd.String("address-state"); value != "" {
+		address.State = &value
+		addressChanged = true
+		changedCount++
+	}
+	if value := cmd.String("address-country"); value != "" {
+		address.Country = &value
+		addressChanged = true
+		changedCount++
+	}
+
+	if addressChanged {
+		details.Address = &address
+	}
+	if changedCount == 0 {
+		return nil, 0, nil
+	}
+
+	return details, changedCount, nil
+}
+
+func parseDate(value string) (*datetime.Date, error) {
+	parsed, err := time.Parse(time.DateOnly, value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid date %q: %w", value, err)
+	}
+	date := datetime.Date{Time: parsed}
+	return &date, nil
+}
+
+func renderCustomer(customer *sumup.Customer) {
+	if customer == nil {
+		return
+	}
+
+	details := []attribute.KeyValue{
+		attribute.Attribute("Customer ID", attribute.Styled(customer.CustomerID)),
+	}
+	if customer.PersonalDetails == nil {
+		display.DataList(details)
+		return
+	}
+
+	personal := customer.PersonalDetails
+	details = append(details, attribute.OptionalString("First Name", personal.FirstName))
+	details = append(details, attribute.OptionalString("Last Name", personal.LastName))
+	details = append(details, attribute.OptionalString("Email", personal.Email))
+	details = append(details, attribute.OptionalString("Phone", personal.Phone))
+	details = append(details, attribute.OptionalString("Tax ID", personal.TaxID))
+	if personal.BirthDate != nil {
+		birthDate := personal.BirthDate.Format(time.DateOnly)
+		details = append(details, attribute.Attribute("Birth Date", attribute.Styled(birthDate)))
+	} else {
+		details = append(details, attribute.Attribute("Birth Date", attribute.Styled("-")))
+	}
+	details = append(details, attribute.Attribute("Address", attribute.Styled(formatAddress(personal.Address))))
+	display.DataList(details)
+}
+
+func formatAddress(address *sumup.AddressLegacy) string {
+	if address == nil {
+		return "-"
+	}
+
+	parts := make([]string, 0, 6)
+	if address.Line1 != nil && *address.Line1 != "" {
+		parts = append(parts, *address.Line1)
+	}
+	if address.Line2 != nil && *address.Line2 != "" {
+		parts = append(parts, *address.Line2)
+	}
+	if address.City != nil && *address.City != "" {
+		parts = append(parts, *address.City)
+	}
+	if address.PostalCode != nil && *address.PostalCode != "" {
+		parts = append(parts, *address.PostalCode)
+	}
+	if address.State != nil && *address.State != "" {
+		parts = append(parts, *address.State)
+	}
+	if address.Country != nil && *address.Country != "" {
+		parts = append(parts, *address.Country)
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, ", ")
 }
