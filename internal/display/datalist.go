@@ -1,7 +1,6 @@
 package display
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
