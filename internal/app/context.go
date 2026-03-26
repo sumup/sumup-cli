@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -23,6 +24,7 @@ type Context struct {
 	ExactTimestamps bool
 	Locale          string
 	MerchantCode    string
+	Output          io.Writer
 }
 
 // NewContext constructs the CLI context with an initialized SumUp API client.
@@ -47,6 +49,7 @@ func NewContext(apiKey, baseURL string, jsonOutput bool, exactTimestamps bool) (
 		ExactTimestamps: exactTimestamps,
 		Locale:          detectLocale(),
 		MerchantCode:    cfg.CurrentMerchantCode,
+		Output:          os.Stdout,
 	}, nil
 }
 

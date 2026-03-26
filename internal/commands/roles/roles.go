@@ -38,7 +38,7 @@ func listRoles(_ context.Context, cmd *cli.Command) error {
 	}
 	roles := defaultRoles()
 	if appCtx.JSONOutput {
-		return display.PrintJSON(roles)
+		return display.PrintJSON(appCtx.Output, roles)
 	}
 
 	rows := make([][]attribute.Value, 0, len(roles))
@@ -51,6 +51,7 @@ func listRoles(_ context.Context, cmd *cli.Command) error {
 	}
 
 	display.RenderTable(
+		appCtx.Output,
 		"Roles",
 		[]string{"Role", "Display Name", "Description"},
 		rows,

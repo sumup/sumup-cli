@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"strings"
 	"time"
@@ -220,7 +221,7 @@ func listReaders(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(response.Items)
+		return display.PrintJSON(appCtx.Output, response.Items)
 	}
 
 	rows := make([][]attribute.Value, 0, len(response.Items))
@@ -237,6 +238,7 @@ func listReaders(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	display.RenderTable(
+		appCtx.Output,
 		"Readers",
 		[]string{"ID", "Name", "Status", "Model", "Identifier"},
 		rows,
@@ -266,11 +268,11 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(reader)
+		return display.PrintJSON(appCtx.Output, reader)
 	}
 
 	message.Success("Reader created")
-	display.DataList([]attribute.KeyValue{
+	display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(string(reader.ID)),
 		attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
 		attribute.Attribute("Status", attribute.Styled(string(reader.Status))),
@@ -300,7 +302,7 @@ func deleteReader(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(map[string]string{"status": "deleted"})
+		return display.PrintJSON(appCtx.Output, map[string]string{"status": "deleted"})
 	}
 
 	message.Success("Reader deleted")
@@ -379,7 +381,7 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(response)
+		return display.PrintJSON(appCtx.Output, response)
 	}
 
 	message.Success("Checkout initiated")
@@ -389,8 +391,7 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 	if desc := cmd.String("description"); desc != "" {
 		details = append(details, attribute.Attribute("Description", attribute.Styled(desc)))
 	}
-	display.DataList(details)
-
+	display.DataList(appCtx.Output, details)
 	return nil
 }
 
@@ -414,7 +415,7 @@ func readerStatus(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(response)
+		return display.PrintJSON(appCtx.Output, response)
 	}
 
 	data := response.Data
@@ -434,7 +435,7 @@ func readerStatus(ctx context.Context, cmd *cli.Command) error {
 		attribute.Attribute("Last Activity", attribute.Styled(util.TimeOrDash(appCtx, data.LastActivity))),
 	}
 
-	display.DataList(details)
+	display.DataList(appCtx.Output, details)
 	return nil
 }
 
@@ -459,10 +460,10 @@ func getReader(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(reader)
+		return display.PrintJSON(appCtx.Output, reader)
 	}
 
-	renderReader(reader)
+	renderReader(appCtx.Output, reader)
 	return nil
 }
 
@@ -484,11 +485,11 @@ func updateReader(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(reader)
+		return display.PrintJSON(appCtx.Output, reader)
 	}
 
 	message.Success("Reader updated")
-	renderReader(reader)
+	renderReader(appCtx.Output, reader)
 	return nil
 }
 
@@ -507,19 +508,19 @@ func terminateCheckout(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(map[string]string{"status": "termination_requested"})
+		return display.PrintJSON(appCtx.Output, map[string]string{"status": "termination_requested"})
 	}
 
 	message.Success("Reader checkout termination requested")
 	return nil
 }
 
-func renderReader(reader *sumup.Reader) {
+func renderReader(w io.Writer, reader *sumup.Reader) {
 	if reader == nil {
 		return
 	}
 
-	display.DataList([]attribute.KeyValue{
+	display.DataList(w, []attribute.KeyValue{
 		attribute.ID(string(reader.ID)),
 		attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
 		attribute.Attribute("Status", attribute.Styled(string(reader.Status))),

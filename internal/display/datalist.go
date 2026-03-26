@@ -1,14 +1,14 @@
 package display
 
 import (
-	"fmt"
+	"io"
 	"strings"
 
 	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
 
 // DataList renders key/value pairs as "Key: Value" rows where keys are bold.
-func DataList(pairs []attribute.KeyValue) {
+func DataList(w io.Writer, pairs []attribute.KeyValue) {
 	if len(pairs) == 0 {
 		return
 	}
@@ -17,6 +17,6 @@ func DataList(pairs []attribute.KeyValue) {
 		if strings.TrimSpace(pair.Key.Text) == "" {
 			continue
 		}
-		fmt.Printf("%s: %s\n", pair.Key.String(), pair.Value.String())
+		writef(w, "%s: %s\n", pair.Key.String(), pair.Value.String())
 	}
 }
