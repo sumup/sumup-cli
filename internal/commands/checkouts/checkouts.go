@@ -48,7 +48,7 @@ func NewCommand() *cli.Command {
 						Usage:    "Checkout reference that must be unique per merchant.",
 						Required: true,
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:     "amount",
 						Usage:    "Amount to be charged.",
 						Required: true,
@@ -107,7 +107,7 @@ func NewCommand() *cli.Command {
 						Usage:   "Merchant code that owns the checkout. Falls back to context.",
 						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:  "amount",
 						Usage: "Optional amount filter.",
 					},
@@ -204,9 +204,13 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 
 	body := sumup.CheckoutsCreateParams{
 		CheckoutReference: cmd.String("reference"),
-		Amount:            float32(cmd.Float64("amount")),
+		Amount:            0,
 		Currency:          parsedCurrency,
 		MerchantCode:      merchantCode,
+	}
+	body.Amount, err = currency.ParseMajorUnitsForCurrency32(cmd.String("amount"), parsedCurrency)
+	if err != nil {
+		return err
 	}
 
 	if value := cmd.String("description"); value != "" {
@@ -323,13 +327,21 @@ func listPaymentMethods(ctx context.Context, cmd *cli.Command) error {
 
 	params := sumup.CheckoutsListAvailablePaymentMethodsParams{}
 	if cmd.IsSet("amount") {
-		value := cmd.Float64("amount")
-		params.Amount = &value
+		if cmd.String("currency") == "" {
+			return fmt.Errorf("--currency is required when --amount is set")
+		}
 	}
 	if value := cmd.String("currency"); value != "" {
 		parsedCurrency, err := currency.Parse(value)
 		if err != nil {
 			return err
+		}
+		if amount := cmd.String("amount"); amount != "" {
+			parsedAmount, err := currency.ParseMajorUnitsForCurrency64(amount, parsedCurrency)
+			if err != nil {
+				return err
+			}
+			params.Amount = &parsedAmount
 		}
 		c := string(parsedCurrency)
 		params.Currency = &c
