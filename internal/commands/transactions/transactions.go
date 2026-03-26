@@ -117,7 +117,7 @@ func NewCommand() *cli.Command {
 				Action:    refundTransaction,
 				ArgsUsage: "<transaction-id>",
 				Flags: []cli.Flag{
-					&cli.Float64Flag{
+					&cli.StringFlag{
 						Name:  "amount",
 						Usage: "Optional partial refund amount in major units.",
 					},
@@ -296,7 +296,10 @@ func refundTransaction(ctx context.Context, cmd *cli.Command) error {
 
 	body := sumup.TransactionsRefundParams{}
 	if cmd.IsSet("amount") {
-		value := float32(cmd.Float64("amount"))
+		value, err := currency.ParseMajorUnits32(cmd.String("amount"))
+		if err != nil {
+			return err
+		}
 		body.Amount = &value
 	}
 

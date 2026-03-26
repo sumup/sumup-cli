@@ -2,6 +2,7 @@ package currency
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/shopspring/decimal"
@@ -136,4 +137,74 @@ func ToMinorUnits(amount string, minorUnit int32) (int64, error) {
 	scaled := decimalAmount.Mul(factor).Round(0)
 	value := scaled.IntPart()
 	return value, nil
+}
+
+// ParseMajorUnits32 converts a decimal amount string into float32 major units.
+func ParseMajorUnits32(amount string) (float32, error) {
+	normalized, err := normalizedAmountString(amount)
+	if err != nil {
+		return 0, err
+	}
+
+	value, err := strconv.ParseFloat(normalized, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid amount %q: %w", amount, err)
+	}
+
+	return float32(value), nil
+}
+
+// ParseMajorUnitsForCurrency32 converts a decimal amount string into float32 major units
+// after validating the scale for the given currency.
+func ParseMajorUnitsForCurrency32(amount string, currency sumup.Currency) (float32, error) {
+	normalized, err := normalizedAmountStringForCurrency(amount, currency)
+	if err != nil {
+		return 0, err
+	}
+
+	value, err := strconv.ParseFloat(normalized, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid amount %q: %w", amount, err)
+	}
+
+	return float32(value), nil
+}
+
+// ParseMajorUnitsForCurrency64 converts a decimal amount string into float64 major units
+// after validating the scale for the given currency.
+func ParseMajorUnitsForCurrency64(amount string, currency sumup.Currency) (float64, error) {
+	normalized, err := normalizedAmountStringForCurrency(amount, currency)
+	if err != nil {
+		return 0, err
+	}
+
+	value, err := strconv.ParseFloat(normalized, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid amount %q: %w", amount, err)
+	}
+
+	return value, nil
+}
+
+func normalizedAmountString(amount string) (string, error) {
+	decimalAmount, err := decimal.NewFromString(strings.TrimSpace(amount))
+	if err != nil {
+		return "", fmt.Errorf("invalid amount %q: %w", amount, err)
+	}
+
+	return decimalAmount.String(), nil
+}
+
+func normalizedAmountStringForCurrency(amount string, currency sumup.Currency) (string, error) {
+	decimalAmount, err := decimal.NewFromString(strings.TrimSpace(amount))
+	if err != nil {
+		return "", fmt.Errorf("invalid amount %q: %w", amount, err)
+	}
+
+	info, ok := infoByCurrency[currency]
+	if ok && -decimalAmount.Exponent() > info.decimals {
+		return "", fmt.Errorf("invalid amount %q for %s: supports at most %d decimal places", amount, currency, info.decimals)
+	}
+
+	return decimalAmount.StringFixedBank(max(-decimalAmount.Exponent(), 0)), nil
 }
