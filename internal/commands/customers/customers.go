@@ -42,6 +42,24 @@ func NewCommand() *cli.Command {
 				ArgsUsage: "<customer-id>",
 				Flags:     customerDetailsFlags(),
 			},
+			{
+				Name:  "payment-instruments",
+				Usage: "Manage stored payment instruments for a customer.",
+				Commands: []*cli.Command{
+					{
+						Name:      "list",
+						Usage:     "List stored payment instruments for a customer.",
+						Action:    listPaymentInstruments,
+						ArgsUsage: "<customer-id>",
+					},
+					{
+						Name:      "deactivate",
+						Usage:     "Deactivate a stored payment instrument.",
+						Action:    deactivatePaymentInstrument,
+						ArgsUsage: "<customer-id> <token>",
+					},
+				},
+			},
 		},
 	}
 }
@@ -187,6 +205,67 @@ func updateCustomer(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	if cmd.Args().Len() != 1 {
+		return fmt.Errorf("expected exactly 1 argument: customer ID")
+	}
+
+	customerID := cmd.Args().Get(0)
+	instruments, err := appCtx.Client.Customers.ListPaymentInstruments(ctx, customerID)
+	if err != nil {
+		return fmt.Errorf("list payment instruments: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(instruments)
+	}
+
+	rows := make([][]attribute.Value, 0, len(*instruments))
+	for _, instrument := range *instruments {
+		rows = append(rows, []attribute.Value{
+			attribute.OptionalStringValue(instrument.Token),
+			attribute.OptionalValue(instrument.Type),
+			attribute.ValueOf(paymentInstrumentCardLabel(instrument.Card)),
+			attribute.ValueOf(util.BoolLabel(instrument.Active)),
+			attribute.ValueOf(util.TimeOrDash(appCtx, instrument.CreatedAt)),
+		})
+	}
+
+	display.RenderTable(
+		"Payment Instruments",
+		[]string{"Token", "Type", "Card", "Active", "Created At"},
+		rows,
+	)
+	return nil
+}
+
+func deactivatePaymentInstrument(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	if cmd.Args().Len() != 2 {
+		return fmt.Errorf("expected exactly 2 arguments: customer ID and token")
+	}
+
+	customerID := cmd.Args().Get(0)
+	token := cmd.Args().Get(1)
+	if err := appCtx.Client.Customers.DeactivatePaymentInstrument(ctx, customerID, token); err != nil {
+		return fmt.Errorf("deactivate payment instrument: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(map[string]string{"status": "deactivated"})
+	}
+
+	message.Success("Payment instrument deactivated")
+	return nil
+}
+
 func customerDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails, int, error) {
 	details := &sumup.PersonalDetails{}
 	changedCount := 0
@@ -329,4 +408,22 @@ func formatAddress(address *sumup.AddressLegacy) string {
 		return "-"
 	}
 	return strings.Join(parts, ", ")
+}
+
+func paymentInstrumentCardLabel(card *sumup.PaymentInstrumentResponseCard) string {
+	if card == nil {
+		return "-"
+	}
+
+	parts := make([]string, 0, 2)
+	if card.Type != nil && *card.Type != "" {
+		parts = append(parts, string(*card.Type))
+	}
+	if card.Last4Digits != nil && *card.Last4Digits != "" {
+		parts = append(parts, fmt.Sprintf("(****%s)", *card.Last4Digits))
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, " ")
 }
