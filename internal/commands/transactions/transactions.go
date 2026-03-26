@@ -138,62 +138,9 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	params := sumup.TransactionsListParams{}
-	if cmd.IsSet("limit") {
-		value := cmd.Int("limit")
-		params.Limit = &value
-	}
-	if ts, err := parseRFC3339Flag(cmd, "changes-since"); err != nil {
+	params, err := transactionsListParamsFromCommand(cmd)
+	if err != nil {
 		return err
-	} else if ts != nil {
-		params.ChangesSince = ts
-	}
-	if cmd.IsSet("newest-ref") {
-		value := cmd.String("newest-ref")
-		params.NewestRef = &value
-	}
-	if ts, err := parseRFC3339Flag(cmd, "newest-time"); err != nil {
-		return err
-	} else if ts != nil {
-		params.NewestTime = ts
-	}
-	if cmd.IsSet("oldest-ref") {
-		value := cmd.String("oldest-ref")
-		params.OldestRef = &value
-	}
-	if ts, err := parseRFC3339Flag(cmd, "oldest-time"); err != nil {
-		return err
-	} else if ts != nil {
-		params.OldestTime = ts
-	}
-	if cmd.IsSet("order") {
-		value := cmd.String("order")
-		params.Order = &value
-	}
-	if values := cmd.StringSlice("payment-type"); len(values) > 0 {
-		types := make([]sumup.PaymentType, 0, len(values))
-		for _, v := range values {
-			if v == "" {
-				continue
-			}
-			types = append(types, sumup.PaymentType(v))
-		}
-		if len(types) > 0 {
-			params.PaymentTypes = types
-		}
-	}
-	if values := cmd.StringSlice("status"); len(values) > 0 {
-		params.Statuses = values
-	}
-	if cmd.IsSet("transaction-code") {
-		value := cmd.String("transaction-code")
-		params.TransactionCode = &value
-	}
-	if values := cmd.StringSlice("type"); len(values) > 0 {
-		params.Types = values
-	}
-	if values := cmd.StringSlice("user"); len(values) > 0 {
-		params.Users = values
 	}
 
 	response, err := appCtx.Client.Transactions.List(ctx, merchantCode, params)
@@ -210,22 +157,10 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(items)
 	}
 
-	rows := make([][]attribute.Value, 0, len(items))
-	for _, tx := range items {
-		rows = append(rows, []attribute.Value{
-			attribute.OptionalStringValue(tx.ID),
-			attribute.OptionalStringValue(tx.TransactionCode),
-			attribute.ValueOf(currency.FormatPointers(tx.Amount, tx.Currency)),
-			attribute.OptionalValue(tx.Status),
-			attribute.OptionalValue(tx.PaymentType),
-			attribute.ValueOf(util.TimeOrDash(appCtx, tx.Timestamp)),
-		})
-	}
-
 	display.RenderTable(
 		"Transactions",
 		[]string{"ID", "Code", "Amount", "Status", "Payment Type", "Created At"},
-		rows,
+		transactionRows(appCtx, items),
 	)
 	return nil
 }
@@ -241,34 +176,9 @@ func getTransaction(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	params := sumup.TransactionsGetParams{}
-	lookupCount := 0
-	if cmd.Args().Len() > 0 {
-		transactionID := cmd.Args().Get(0)
-		params.ID = &transactionID
-		lookupCount++
-	}
-	if value := cmd.String("internal-id"); value != "" {
-		params.InternalID = &value
-		lookupCount++
-	}
-	if value := cmd.String("transaction-code"); value != "" {
-		params.TransactionCode = &value
-		lookupCount++
-	}
-	if value := cmd.String("foreign-transaction-id"); value != "" {
-		params.ForeignTransactionID = &value
-		lookupCount++
-	}
-	if value := cmd.String("client-transaction-id"); value != "" {
-		params.ClientTransactionID = &value
-		lookupCount++
-	}
-	if lookupCount == 0 {
-		return fmt.Errorf("provide a transaction ID argument or one lookup flag")
-	}
-	if lookupCount > 1 {
-		return fmt.Errorf("provide exactly one transaction lookup")
+	params, err := transactionLookupParamsFromCommand(cmd)
+	if err != nil {
+		return err
 	}
 
 	transaction, err := appCtx.Client.Transactions.Get(ctx, merchantCode, params)
@@ -349,6 +259,123 @@ func transactionCardLabel(card *sumup.CardResponse) string {
 		return "-"
 	}
 	return strings.Join(parts, " ")
+}
+
+func transactionRows(appCtx *app.Context, items []sumup.TransactionHistory) [][]attribute.Value {
+	rows := make([][]attribute.Value, 0, len(items))
+	for _, tx := range items {
+		rows = append(rows, []attribute.Value{
+			attribute.OptionalStringValue(tx.ID),
+			attribute.OptionalStringValue(tx.TransactionCode),
+			attribute.ValueOf(currency.FormatPointers(tx.Amount, tx.Currency)),
+			attribute.OptionalValue(tx.Status),
+			attribute.OptionalValue(tx.PaymentType),
+			attribute.ValueOf(util.TimeOrDash(appCtx, tx.Timestamp)),
+		})
+	}
+
+	return rows
+}
+
+func transactionsListParamsFromCommand(cmd *cli.Command) (sumup.TransactionsListParams, error) {
+	params := sumup.TransactionsListParams{}
+	if cmd.IsSet("limit") {
+		value := cmd.Int("limit")
+		params.Limit = &value
+	}
+	if ts, err := parseRFC3339Flag(cmd, "changes-since"); err != nil {
+		return sumup.TransactionsListParams{}, err
+	} else if ts != nil {
+		params.ChangesSince = ts
+	}
+	if cmd.IsSet("newest-ref") {
+		value := cmd.String("newest-ref")
+		params.NewestRef = &value
+	}
+	if ts, err := parseRFC3339Flag(cmd, "newest-time"); err != nil {
+		return sumup.TransactionsListParams{}, err
+	} else if ts != nil {
+		params.NewestTime = ts
+	}
+	if cmd.IsSet("oldest-ref") {
+		value := cmd.String("oldest-ref")
+		params.OldestRef = &value
+	}
+	if ts, err := parseRFC3339Flag(cmd, "oldest-time"); err != nil {
+		return sumup.TransactionsListParams{}, err
+	} else if ts != nil {
+		params.OldestTime = ts
+	}
+	if cmd.IsSet("order") {
+		value := cmd.String("order")
+		params.Order = &value
+	}
+	if values := cmd.StringSlice("payment-type"); len(values) > 0 {
+		params.PaymentTypes = paymentTypesFromStrings(values)
+	}
+	if values := cmd.StringSlice("status"); len(values) > 0 {
+		params.Statuses = values
+	}
+	if cmd.IsSet("transaction-code") {
+		value := cmd.String("transaction-code")
+		params.TransactionCode = &value
+	}
+	if values := cmd.StringSlice("type"); len(values) > 0 {
+		params.Types = values
+	}
+	if values := cmd.StringSlice("user"); len(values) > 0 {
+		params.Users = values
+	}
+
+	return params, nil
+}
+
+func transactionLookupParamsFromCommand(cmd *cli.Command) (sumup.TransactionsGetParams, error) {
+	params := sumup.TransactionsGetParams{}
+	lookupCount := 0
+
+	if cmd.Args().Len() > 0 {
+		transactionID := cmd.Args().Get(0)
+		params.ID = &transactionID
+		lookupCount++
+	}
+	if value := cmd.String("internal-id"); value != "" {
+		params.InternalID = &value
+		lookupCount++
+	}
+	if value := cmd.String("transaction-code"); value != "" {
+		params.TransactionCode = &value
+		lookupCount++
+	}
+	if value := cmd.String("foreign-transaction-id"); value != "" {
+		params.ForeignTransactionID = &value
+		lookupCount++
+	}
+	if value := cmd.String("client-transaction-id"); value != "" {
+		params.ClientTransactionID = &value
+		lookupCount++
+	}
+
+	switch lookupCount {
+	case 0:
+		return sumup.TransactionsGetParams{}, fmt.Errorf("provide a transaction ID argument or one lookup flag")
+	case 1:
+		return params, nil
+	default:
+		return sumup.TransactionsGetParams{}, fmt.Errorf("provide exactly one transaction lookup")
+	}
+}
+
+func paymentTypesFromStrings(values []string) []sumup.PaymentType {
+	types := make([]sumup.PaymentType, 0, len(values))
+	for _, v := range values {
+		if v == "" {
+			continue
+		}
+		types = append(types, sumup.PaymentType(v))
+	}
+
+	return types
 }
 
 func parseRFC3339Flag(cmd *cli.Command, name string) (*time.Time, error) {
