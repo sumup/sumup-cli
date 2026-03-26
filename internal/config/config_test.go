@@ -1,37 +1,38 @@
-package config
+package config_test
 
-import "testing"
+import (
+	"testing"
 
-func TestConfigSaveAndLoadRoundTrip(t *testing.T) {
-	tempDir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", tempDir)
-	t.Setenv("HOME", tempDir)
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	cfg := &Config{CurrentMerchantCode: "M123"}
-	if err := cfg.Save(); err != nil {
-		t.Fatalf("Save() error = %v", err)
-	}
+	"github.com/sumup/sumup-cli/internal/config"
+)
 
-	loaded, err := Load()
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
+func TestConfig_Save(t *testing.T) {
+	t.Run("persists config that can be loaded back", func(t *testing.T) {
+		tempDir := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", tempDir)
+		t.Setenv("HOME", tempDir)
 
-	if loaded.CurrentMerchantCode != cfg.CurrentMerchantCode {
-		t.Fatalf("Load().CurrentMerchantCode = %q, want %q", loaded.CurrentMerchantCode, cfg.CurrentMerchantCode)
-	}
+		cfg := &config.Config{CurrentMerchantCode: "M123"}
+
+		require.NoError(t, cfg.Save())
+
+		loaded, err := config.Load()
+		require.NoError(t, err)
+		assert.Equal(t, cfg.CurrentMerchantCode, loaded.CurrentMerchantCode)
+	})
 }
 
-func TestLoadMissingConfigReturnsEmptyConfig(t *testing.T) {
-	tempDir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", tempDir)
-	t.Setenv("HOME", tempDir)
+func TestLoad(t *testing.T) {
+	t.Run("returns empty config when file does not exist", func(t *testing.T) {
+		tempDir := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", tempDir)
+		t.Setenv("HOME", tempDir)
 
-	cfg, err := Load()
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	if cfg.CurrentMerchantCode != "" {
-		t.Fatalf("Load().CurrentMerchantCode = %q, want empty", cfg.CurrentMerchantCode)
-	}
+		cfg, err := config.Load()
+		require.NoError(t, err)
+		assert.Empty(t, cfg.CurrentMerchantCode)
+	})
 }
