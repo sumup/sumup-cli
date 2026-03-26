@@ -137,12 +137,6 @@ func NewCommand() *cli.Command {
 					&cli.StringFlag{Name: "phone", Usage: "Customer phone."},
 					&cli.StringFlag{Name: "tax-id", Usage: "Customer tax ID."},
 					&cli.StringFlag{Name: "birth-date", Usage: "Customer birth date in YYYY-MM-DD format."},
-					&cli.StringFlag{Name: "card-name", Usage: "Cardholder name."},
-					&cli.StringFlag{Name: "card-number", Usage: "Card number without spaces."},
-					&cli.StringFlag{Name: "card-cvv", Usage: "Card CVV."},
-					&cli.StringFlag{Name: "card-expiry-month", Usage: "Card expiry month in MM format."},
-					&cli.StringFlag{Name: "card-expiry-year", Usage: "Card expiry year in YY or YYYY format."},
-					&cli.StringFlag{Name: "card-zip-code", Usage: "Card ZIP code when required."},
 				},
 			},
 		},
@@ -387,11 +381,6 @@ func processCheckout(ctx context.Context, cmd *cli.Command) error {
 	} else if changedCount > 0 {
 		body.PersonalDetails = details
 	}
-	if card, err := checkoutCardFromFlags(cmd); err != nil {
-		return err
-	} else if card != nil {
-		body.Card = card
-	}
 
 	response, err := appCtx.Client.Checkouts.Process(ctx, checkoutID, body)
 	if err != nil {
@@ -482,25 +471,6 @@ func checkoutPersonalDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails,
 		return nil, 0, nil
 	}
 	return details, changedCount, nil
-}
-
-func checkoutCardFromFlags(cmd *cli.Command) (*sumup.Card, error) {
-	number := cmd.String("card-number")
-	if number == "" {
-		return nil, nil
-	}
-
-	card := &sumup.Card{
-		Number:      number,
-		Name:        cmd.String("card-name"),
-		Cvv:         cmd.String("card-cvv"),
-		ExpiryMonth: sumup.CardExpiryMonth(cmd.String("card-expiry-month")),
-		ExpiryYear:  cmd.String("card-expiry-year"),
-	}
-	if zipCode := cmd.String("card-zip-code"); zipCode != "" {
-		card.ZipCode = &zipCode
-	}
-	return card, nil
 }
 
 func enumString[T ~string](value *T) *string {
