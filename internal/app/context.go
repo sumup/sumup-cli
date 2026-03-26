@@ -22,10 +22,16 @@ type Context struct {
 	JSONOutput      bool
 	ExactTimestamps bool
 	Locale          string
+	MerchantCode    string
 }
 
 // NewContext constructs the CLI context with an initialized SumUp API client.
 func NewContext(apiKey, baseURL string, jsonOutput bool, exactTimestamps bool) (*Context, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+
 	var opts []sumupclient.ClientOption
 	if apiKey != "" {
 		opts = append(opts, sumupclient.WithAPIKey(apiKey))
@@ -40,6 +46,7 @@ func NewContext(apiKey, baseURL string, jsonOutput bool, exactTimestamps bool) (
 		JSONOutput:      jsonOutput,
 		ExactTimestamps: exactTimestamps,
 		Locale:          detectLocale(),
+		MerchantCode:    cfg.CurrentMerchantCode,
 	}, nil
 }
 
@@ -85,14 +92,19 @@ func GetMerchantCode(cmd *cli.Command, flagName string) (string, error) {
 		return cmd.String(flagName), nil
 	}
 
-	merchantCode, err := config.GetCurrentMerchantCode()
-	if err != nil {
-		return "", fmt.Errorf("failed to load merchant context: %w", err)
+	appCtx, err := GetAppContext(cmd)
+	switch {
+	case err == nil && appCtx.MerchantCode != "":
+		return appCtx.MerchantCode, nil
+	case err != nil:
+		merchantCode, loadErr := config.GetCurrentMerchantCode()
+		if loadErr != nil {
+			return "", fmt.Errorf("failed to load merchant context: %w", loadErr)
+		}
+		if merchantCode != "" {
+			return merchantCode, nil
+		}
 	}
 
-	if merchantCode == "" {
-		return "", errors.New("merchant code is required. Provide --merchant-code flag or set context with 'sumup context set'")
-	}
-
-	return merchantCode, nil
+	return "", errors.New("merchant code is required. Provide --merchant-code flag or set context with 'sumup context set'")
 }
