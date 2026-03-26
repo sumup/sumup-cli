@@ -1,14 +1,16 @@
-package util
+package util_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 
 	"github.com/sumup/sumup-cli/internal/app"
+	"github.com/sumup/sumup-cli/internal/commands/util"
 )
 
 func TestRequireSingleArg(t *testing.T) {
@@ -25,37 +27,20 @@ func TestRequireSingleArg(t *testing.T) {
 		{name: "too many args", args: []string{"sumup", "abc", "def"}, wantErr: "unexpected extra arguments"},
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			cmd := &cli.Command{
-				Name: "sumup",
-				Action: func(_ context.Context, cmd *cli.Command) error {
-					got, err := RequireSingleArg(cmd, "value")
-					if tc.wantErr != "" {
-						if err == nil {
-							t.Fatalf("RequireSingleArg() error = nil, want %q", tc.wantErr)
-						}
-						if !strings.Contains(err.Error(), tc.wantErr) {
-							t.Fatalf("RequireSingleArg() error = %q, want substring %q", err, tc.wantErr)
-						}
-						return nil
-					}
-
-					if err != nil {
-						t.Fatalf("RequireSingleArg() unexpected error: %v", err)
-					}
-					if got != tc.want {
-						t.Fatalf("RequireSingleArg() = %q, want %q", got, tc.want)
-					}
-					return nil
-				},
+			got, err := runRequireSingleArg(t, tt.args)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				assert.Empty(t, got)
+				assert.ErrorContains(t, err, tt.wantErr)
+				return
 			}
 
-			if err := cmd.Run(context.Background(), tc.args); err != nil {
-				t.Fatalf("run command: %v", err)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -64,54 +49,74 @@ func TestStringOrDefault(t *testing.T) {
 	t.Parallel()
 
 	fallback := "fallback"
-	if got := StringOrDefault(nil, fallback); got != fallback {
-		t.Fatalf("StringOrDefault(nil) = %q, want %q", got, fallback)
-	}
 
-	empty := ""
-	if got := StringOrDefault(&empty, fallback); got != fallback {
-		t.Fatalf("StringOrDefault(empty) = %q, want %q", got, fallback)
-	}
+	t.Run("returns fallback for nil", func(t *testing.T) {
+		assert.Equal(t, fallback, util.StringOrDefault(nil, fallback))
+	})
 
-	value := "value"
-	if got := StringOrDefault(&value, fallback); got != value {
-		t.Fatalf("StringOrDefault(value) = %q, want %q", got, value)
-	}
+	t.Run("returns fallback for empty string", func(t *testing.T) {
+		empty := ""
+		assert.Equal(t, fallback, util.StringOrDefault(&empty, fallback))
+	})
+
+	t.Run("returns provided value when present", func(t *testing.T) {
+		value := "value"
+		assert.Equal(t, value, util.StringOrDefault(&value, fallback))
+	})
 }
 
 func TestBoolLabel(t *testing.T) {
 	t.Parallel()
 
-	if got := BoolLabel(nil); got != "-" {
-		t.Fatalf("BoolLabel(nil) = %q, want %q", got, "-")
-	}
+	t.Run("returns dash for nil", func(t *testing.T) {
+		assert.Equal(t, "-", util.BoolLabel(nil))
+	})
 
-	trueValue := true
-	if got := BoolLabel(&trueValue); got != "Yes" {
-		t.Fatalf("BoolLabel(true) = %q, want %q", got, "Yes")
-	}
+	t.Run("returns yes for true", func(t *testing.T) {
+		trueValue := true
+		assert.Equal(t, "Yes", util.BoolLabel(&trueValue))
+	})
 
-	falseValue := false
-	if got := BoolLabel(&falseValue); got != "No" {
-		t.Fatalf("BoolLabel(false) = %q, want %q", got, "No")
-	}
+	t.Run("returns no for false", func(t *testing.T) {
+		falseValue := false
+		assert.Equal(t, "No", util.BoolLabel(&falseValue))
+	})
 }
 
 func TestTimeOrDash(t *testing.T) {
 	t.Parallel()
 
-	if got := TimeOrDash(nil, nil); got != "-" {
-		t.Fatalf("TimeOrDash(nil, nil) = %q, want %q", got, "-")
-	}
-
 	ts := time.Date(2026, time.March, 26, 12, 34, 56, 0, time.UTC)
-	ctx := &app.Context{ExactTimestamps: true}
-	if got := TimeOrDash(ctx, &ts); got != ts.In(time.Local).Format(time.RFC3339) {
-		t.Fatalf("TimeOrDash(exact) = %q, want %q", got, ts.In(time.Local).Format(time.RFC3339))
+
+	t.Run("returns dash for nil timestamp", func(t *testing.T) {
+		assert.Equal(t, "-", util.TimeOrDash(nil, nil))
+	})
+
+	t.Run("formats exact timestamps in local time", func(t *testing.T) {
+		ctx := &app.Context{ExactTimestamps: true}
+		assert.Equal(t, ts.In(time.Local).Format(time.RFC3339), util.TimeOrDash(ctx, &ts))
+	})
+
+	t.Run("formats relative timestamps when exact mode is disabled", func(t *testing.T) {
+		got := util.TimeOrDash(&app.Context{Locale: "en"}, &ts)
+		assert.NotEmpty(t, got)
+		assert.NotEqual(t, "-", got)
+	})
+}
+
+func runRequireSingleArg(t *testing.T, args []string) (string, error) {
+	t.Helper()
+
+	var got string
+	cmd := &cli.Command{
+		Name: "sumup",
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			var err error
+			got, err = util.RequireSingleArg(cmd, "value")
+			return err
+		},
 	}
 
-	relative := TimeOrDash(&app.Context{Locale: "en"}, &ts)
-	if relative == "" || relative == "-" {
-		t.Fatalf("TimeOrDash(relative) = %q, want non-empty relative string", relative)
-	}
+	err := cmd.Run(context.Background(), args)
+	return got, err
 }
