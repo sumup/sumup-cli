@@ -31,10 +31,9 @@ func NewCommand() *cli.Command {
 				Action: listReaders,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "merchant-code",
-						Usage:    "Merchant code whose readers should be listed.",
-						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
-						Required: true,
+						Name:    "merchant-code",
+						Usage:   "Merchant code whose readers should be listed. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
 			},
@@ -44,10 +43,9 @@ func NewCommand() *cli.Command {
 				Action: addReader,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "merchant-code",
-						Usage:    "Merchant code that will own the new reader.",
-						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
-						Required: true,
+						Name:    "merchant-code",
+						Usage:   "Merchant code that will own the new reader. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 					&cli.StringFlag{
 						Name:     "pairing-code",
@@ -68,10 +66,9 @@ func NewCommand() *cli.Command {
 				ArgsUsage: "<reader-id>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "merchant-code",
-						Usage:    "Merchant code that owns the reader.",
-						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
-						Required: true,
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the reader. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
 			},
@@ -82,10 +79,9 @@ func NewCommand() *cli.Command {
 				ArgsUsage: "<reader-id>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "merchant-code",
-						Usage:    "Merchant code that owns the reader.",
-						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
-						Required: true,
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the reader. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
 			},
@@ -96,10 +92,9 @@ func NewCommand() *cli.Command {
 				ArgsUsage: "<reader-id>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "merchant-code",
-						Usage:    "Merchant code that owns the reader.",
-						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
-						Required: true,
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the reader. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 					&cli.StringFlag{
 						Name:     "amount",
@@ -163,7 +158,11 @@ func listReaders(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	response, err := appCtx.Client.Readers.List(ctx, cmd.String("merchant-code"))
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
+	response, err := appCtx.Client.Readers.List(ctx, merchantCode)
 	if err != nil {
 		return fmt.Errorf("list readers: %w", err)
 	}
@@ -198,12 +197,16 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
 	body := sumup.ReadersCreateParams{
 		PairingCode: sumup.ReaderPairingCode(cmd.String("pairing-code")),
 		Name:        sumup.ReaderName(cmd.String("name")),
 	}
 
-	reader, err := appCtx.Client.Readers.Create(ctx, cmd.String("merchant-code"), body)
+	reader, err := appCtx.Client.Readers.Create(ctx, merchantCode, body)
 	if pErr := new(sumup.Problem); errors.As(err, &pErr) {
 		return fmt.Errorf("create reader: %v %v", *pErr.Detail, *pErr.Title)
 	} else if err != nil {
@@ -230,12 +233,16 @@ func deleteReader(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
 	readerID, err := util.RequireSingleArg(cmd, "reader ID")
 	if err != nil {
 		return err
 	}
 
-	err = appCtx.Client.Readers.Delete(ctx, cmd.String("merchant-code"), sumup.ReaderID(readerID))
+	err = appCtx.Client.Readers.Delete(ctx, merchantCode, sumup.ReaderID(readerID))
 	if err != nil {
 		return fmt.Errorf("delete reader: %w", err)
 	}
@@ -250,6 +257,10 @@ func deleteReader(ctx context.Context, cmd *cli.Command) error {
 
 func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
 	if err != nil {
 		return err
 	}
@@ -310,7 +321,7 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		body.Affiliate = nullable.Value(*affiliate)
 	}
 
-	response, err := appCtx.Client.Readers.CreateCheckout(ctx, cmd.String("merchant-code"), readerID, body)
+	response, err := appCtx.Client.Readers.CreateCheckout(ctx, merchantCode, readerID, body)
 	if err != nil {
 		return fmt.Errorf("trigger reader checkout: %w", err)
 	}
@@ -336,12 +347,16 @@ func readerStatus(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
 	readerID, err := util.RequireSingleArg(cmd, "reader ID")
 	if err != nil {
 		return err
 	}
 
-	response, err := appCtx.Client.Readers.GetStatus(ctx, cmd.String("merchant-code"), readerID, sumup.ReadersGetStatusParams{})
+	response, err := appCtx.Client.Readers.GetStatus(ctx, merchantCode, readerID, sumup.ReadersGetStatusParams{})
 	if err != nil {
 		return fmt.Errorf("get reader status: %w", err)
 	}

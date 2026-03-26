@@ -27,10 +27,9 @@ func NewCommand() *cli.Command {
 				Action: listPayouts,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "merchant-code",
-						Usage:    "Merchant code whose payouts should be listed.",
-						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
-						Required: true,
+						Name:    "merchant-code",
+						Usage:   "Merchant code whose payouts should be listed. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 					&cli.StringFlag{
 						Name:     "start-date",
@@ -61,6 +60,10 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
 	startDate, err := parseDateArg(cmd.String("start-date"))
 	if err != nil {
 		return err
@@ -85,7 +88,7 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 		params.Order = &order
 	}
 
-	payoutList, err := appCtx.Client.Payouts.List(ctx, cmd.String("merchant-code"), params)
+	payoutList, err := appCtx.Client.Payouts.List(ctx, merchantCode, params)
 	if err != nil {
 		return fmt.Errorf("list payouts: %w", err)
 	}
