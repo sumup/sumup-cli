@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	sumup "github.com/sumup/sumup-go"
+	"github.com/sumup/sumup-go/datetime"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
@@ -89,6 +90,54 @@ func NewCommand() *cli.Command {
 				Usage:     "Deactivate a checkout by ID.",
 				Action:    deactivateCheckout,
 				ArgsUsage: "<checkout-id>",
+			},
+			{
+				Name:      "get",
+				Usage:     "Get a checkout by ID.",
+				Action:    getCheckout,
+				ArgsUsage: "<checkout-id>",
+			},
+			{
+				Name:   "payment-methods",
+				Usage:  "List available payment methods for a merchant.",
+				Action: listPaymentMethods,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the checkout. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
+					},
+					&cli.Float64Flag{
+						Name:  "amount",
+						Usage: "Optional amount filter.",
+					},
+					&cli.StringFlag{
+						Name:  "currency",
+						Usage: fmt.Sprintf("Optional currency filter. Supported: %s", strings.Join(currency.Supported(), ", ")),
+					},
+				},
+			},
+			{
+				Name:      "process",
+				Usage:     "Process a checkout.",
+				Action:    processCheckout,
+				ArgsUsage: "<checkout-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "payment-type",
+						Usage:    "Payment type to use when processing the checkout.",
+						Required: true,
+					},
+					&cli.StringFlag{Name: "customer-id", Usage: "Customer ID for tokenized payments."},
+					&cli.StringFlag{Name: "token", Usage: "Saved payment instrument token."},
+					&cli.IntFlag{Name: "installments", Usage: "Installment count for supported regions."},
+					&cli.StringFlag{Name: "first-name", Usage: "Customer first name."},
+					&cli.StringFlag{Name: "last-name", Usage: "Customer last name."},
+					&cli.StringFlag{Name: "email", Usage: "Customer email."},
+					&cli.StringFlag{Name: "phone", Usage: "Customer phone."},
+					&cli.StringFlag{Name: "tax-id", Usage: "Customer tax ID."},
+					&cli.StringFlag{Name: "birth-date", Usage: "Customer birth date in YYYY-MM-DD format."},
+				},
 			},
 		},
 	}
@@ -237,4 +286,197 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 	}
 	display.DataList(details)
 	return nil
+}
+
+func getCheckout(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	checkoutID, err := util.RequireSingleArg(cmd, "checkout ID")
+	if err != nil {
+		return err
+	}
+
+	checkout, err := appCtx.Client.Checkouts.Get(ctx, checkoutID)
+	if err != nil {
+		return fmt.Errorf("get checkout: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(checkout)
+	}
+
+	renderCheckout(appCtx, checkout)
+	return nil
+}
+
+func listPaymentMethods(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
+
+	params := sumup.CheckoutsListAvailablePaymentMethodsParams{}
+	if cmd.IsSet("amount") {
+		value := cmd.Float64("amount")
+		params.Amount = &value
+	}
+	if value := cmd.String("currency"); value != "" {
+		parsedCurrency, err := currency.Parse(value)
+		if err != nil {
+			return err
+		}
+		c := string(parsedCurrency)
+		params.Currency = &c
+	}
+
+	methods, err := appCtx.Client.Checkouts.ListAvailablePaymentMethods(ctx, merchantCode, params)
+	if err != nil {
+		return fmt.Errorf("list checkout payment methods: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(methods.AvailablePaymentMethods)
+	}
+
+	rows := make([][]attribute.Value, 0, len(methods.AvailablePaymentMethods))
+	for _, method := range methods.AvailablePaymentMethods {
+		rows = append(rows, []attribute.Value{attribute.ValueOf(method.ID)})
+	}
+
+	display.RenderTable("Checkout Payment Methods", []string{"ID"}, rows)
+	return nil
+}
+
+func processCheckout(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	checkoutID, err := util.RequireSingleArg(cmd, "checkout ID")
+	if err != nil {
+		return err
+	}
+
+	body := sumup.CheckoutsProcessParams{
+		PaymentType: sumup.ProcessCheckoutPaymentType(cmd.String("payment-type")),
+	}
+	if customerID := cmd.String("customer-id"); customerID != "" {
+		body.CustomerID = &customerID
+	}
+	if token := cmd.String("token"); token != "" {
+		body.Token = &token
+	}
+	if cmd.IsSet("installments") {
+		value := cmd.Int("installments")
+		body.Installments = &value
+	}
+	if details, changedCount, err := checkoutPersonalDetailsFromFlags(cmd); err != nil {
+		return err
+	} else if changedCount > 0 {
+		body.PersonalDetails = details
+	}
+
+	response, err := appCtx.Client.Checkouts.Process(ctx, checkoutID, body)
+	if err != nil {
+		return fmt.Errorf("process checkout: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(response)
+	}
+
+	if response.CheckoutSuccess != nil {
+		message.Success("Checkout processed")
+		renderCheckout(appCtx, response.CheckoutSuccess)
+		return nil
+	}
+
+	if response.CheckoutAccepted != nil {
+		message.Success("Checkout accepted")
+		if response.CheckoutAccepted.NextStep != nil {
+			display.DataList([]attribute.KeyValue{
+				attribute.OptionalString("Method", response.CheckoutAccepted.NextStep.Method),
+				attribute.OptionalString("URL", response.CheckoutAccepted.NextStep.URL),
+				attribute.OptionalString("Redirect URL", response.CheckoutAccepted.NextStep.RedirectURL),
+			})
+		}
+	}
+	return nil
+}
+
+func renderCheckout(appCtx *app.Context, checkout *sumup.CheckoutSuccess) {
+	if checkout == nil {
+		return
+	}
+
+	details := []attribute.KeyValue{}
+	if checkout.ID != nil {
+		details = append(details, attribute.ID(*checkout.ID))
+	}
+	details = append(details,
+		attribute.Attribute("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "-"))),
+		attribute.Attribute("Amount", attribute.Styled(currency.FormatPointers(checkout.Amount, checkout.Currency))),
+		attribute.OptionalString("Merchant", checkout.MerchantCode),
+		attribute.OptionalString("Merchant Name", checkout.MerchantName),
+		attribute.OptionalString("Description", checkout.Description),
+		attribute.OptionalString("Status", enumString(checkout.Status)),
+		attribute.OptionalString("Transaction ID", checkout.TransactionID),
+		attribute.OptionalString("Transaction Code", checkout.TransactionCode),
+		attribute.Attribute("Created At", attribute.Styled(util.TimeOrDash(appCtx, checkout.Date))),
+	)
+	display.DataList(details)
+}
+
+func checkoutPersonalDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails, int, error) {
+	details := &sumup.PersonalDetails{}
+	changedCount := 0
+
+	if value := cmd.String("first-name"); value != "" {
+		details.FirstName = &value
+		changedCount++
+	}
+	if value := cmd.String("last-name"); value != "" {
+		details.LastName = &value
+		changedCount++
+	}
+	if value := cmd.String("email"); value != "" {
+		details.Email = &value
+		changedCount++
+	}
+	if value := cmd.String("phone"); value != "" {
+		details.Phone = &value
+		changedCount++
+	}
+	if value := cmd.String("tax-id"); value != "" {
+		details.TaxID = &value
+		changedCount++
+	}
+	if value := cmd.String("birth-date"); value != "" {
+		parsedDate, err := time.Parse(time.DateOnly, value)
+		if err != nil {
+			return nil, 0, fmt.Errorf("invalid birth date %q: %w", value, err)
+		}
+		date := datetime.Date{Time: parsedDate}
+		details.BirthDate = &date
+		changedCount++
+	}
+
+	if changedCount == 0 {
+		return nil, 0, nil
+	}
+	return details, changedCount, nil
+}
+
+func enumString[T ~string](value *T) *string {
+	if value == nil {
+		return nil
+	}
+	text := string(*value)
+	return &text
 }

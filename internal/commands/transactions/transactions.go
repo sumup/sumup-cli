@@ -84,14 +84,42 @@ func NewCommand() *cli.Command {
 			},
 			{
 				Name:      "get",
-				Usage:     "Get a specific transaction by ID.",
+				Usage:     "Get a specific transaction.",
 				Action:    getTransaction,
-				ArgsUsage: "<transaction-id>",
+				ArgsUsage: "[transaction-id]",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "merchant-code",
 						Usage:   "Merchant code that owns the transaction. Falls back to context.",
 						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
+					},
+					&cli.StringFlag{
+						Name:  "internal-id",
+						Usage: "Lookup by internal transaction ID.",
+					},
+					&cli.StringFlag{
+						Name:  "transaction-code",
+						Usage: "Lookup by transaction code.",
+					},
+					&cli.StringFlag{
+						Name:  "foreign-transaction-id",
+						Usage: "Lookup by foreign transaction ID.",
+					},
+					&cli.StringFlag{
+						Name:  "client-transaction-id",
+						Usage: "Lookup by client transaction ID.",
+					},
+				},
+			},
+			{
+				Name:      "refund",
+				Usage:     "Refund a transaction fully or partially.",
+				Action:    refundTransaction,
+				ArgsUsage: "<transaction-id>",
+				Flags: []cli.Flag{
+					&cli.Float64Flag{
+						Name:  "amount",
+						Usage: "Optional partial refund amount in major units.",
 					},
 				},
 			},
@@ -213,12 +241,34 @@ func getTransaction(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	transactionID, err := util.RequireSingleArg(cmd, "transaction ID")
-	if err != nil {
-		return err
+	params := sumup.TransactionsGetParams{}
+	lookupCount := 0
+	if cmd.Args().Len() > 0 {
+		transactionID := cmd.Args().Get(0)
+		params.ID = &transactionID
+		lookupCount++
 	}
-	params := sumup.TransactionsGetParams{
-		ID: &transactionID,
+	if value := cmd.String("internal-id"); value != "" {
+		params.InternalID = &value
+		lookupCount++
+	}
+	if value := cmd.String("transaction-code"); value != "" {
+		params.TransactionCode = &value
+		lookupCount++
+	}
+	if value := cmd.String("foreign-transaction-id"); value != "" {
+		params.ForeignTransactionID = &value
+		lookupCount++
+	}
+	if value := cmd.String("client-transaction-id"); value != "" {
+		params.ClientTransactionID = &value
+		lookupCount++
+	}
+	if lookupCount == 0 {
+		return fmt.Errorf("provide a transaction ID argument or one lookup flag")
+	}
+	if lookupCount > 1 {
+		return fmt.Errorf("provide exactly one transaction lookup")
 	}
 
 	transaction, err := appCtx.Client.Transactions.Get(ctx, merchantCode, params)
@@ -231,6 +281,33 @@ func getTransaction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	renderTransactionDetails(appCtx, transaction)
+	return nil
+}
+
+func refundTransaction(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	transactionID, err := util.RequireSingleArg(cmd, "transaction ID")
+	if err != nil {
+		return err
+	}
+
+	body := sumup.TransactionsRefundParams{}
+	if cmd.IsSet("amount") {
+		value := float32(cmd.Float64("amount"))
+		body.Amount = &value
+	}
+
+	if err := appCtx.Client.Transactions.Refund(ctx, transactionID, body); err != nil {
+		return fmt.Errorf("refund transaction: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(map[string]string{"status": "refunded"})
+	}
+
 	return nil
 }
 

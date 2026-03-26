@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/urfave/cli/v3"
 
@@ -82,6 +83,57 @@ func NewCommand() *cli.Command {
 						Name:    "merchant-code",
 						Usage:   "Merchant code that owns the reader. Falls back to context.",
 						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
+					},
+				},
+			},
+			{
+				Name:      "get",
+				Usage:     "Get a paired reader.",
+				Action:    getReader,
+				ArgsUsage: "<reader-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "merchant-code",
+						Usage:    "Merchant code that owns the reader.",
+						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "if-modified-since",
+						Usage: "Optional If-Modified-Since query value.",
+					},
+				},
+			},
+			{
+				Name:      "update",
+				Usage:     "Update a paired reader.",
+				Action:    updateReader,
+				ArgsUsage: "<reader-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "merchant-code",
+						Usage:    "Merchant code that owns the reader.",
+						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "name",
+						Usage:    "Updated reader name.",
+						Required: true,
+					},
+				},
+			},
+			{
+				Name:      "terminate",
+				Usage:     "Terminate the current reader checkout.",
+				Action:    terminateCheckout,
+				ArgsUsage: "<reader-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "merchant-code",
+						Usage:    "Merchant code that owns the reader.",
+						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
+						Required: true,
 					},
 				},
 			},
@@ -384,6 +436,98 @@ func readerStatus(ctx context.Context, cmd *cli.Command) error {
 
 	display.DataList(details)
 	return nil
+}
+
+func getReader(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	readerID, err := util.RequireSingleArg(cmd, "reader ID")
+	if err != nil {
+		return err
+	}
+
+	params := sumup.ReadersGetParams{}
+	if value := cmd.String("if-modified-since"); value != "" {
+		params.IfModifiedSince = &value
+	}
+
+	reader, err := appCtx.Client.Readers.Get(ctx, cmd.String("merchant-code"), sumup.ReaderID(readerID), params)
+	if err != nil {
+		return fmt.Errorf("get reader: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(reader)
+	}
+
+	renderReader(reader)
+	return nil
+}
+
+func updateReader(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	readerID, err := util.RequireSingleArg(cmd, "reader ID")
+	if err != nil {
+		return err
+	}
+
+	name := sumup.ReaderName(cmd.String("name"))
+	body := sumup.ReadersUpdateParams{Name: &name}
+	reader, err := appCtx.Client.Readers.Update(ctx, cmd.String("merchant-code"), sumup.ReaderID(readerID), body)
+	if err != nil {
+		return fmt.Errorf("update reader: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(reader)
+	}
+
+	message.Success("Reader updated")
+	renderReader(reader)
+	return nil
+}
+
+func terminateCheckout(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	readerID, err := util.RequireSingleArg(cmd, "reader ID")
+	if err != nil {
+		return err
+	}
+
+	if err := appCtx.Client.Readers.TerminateCheckout(ctx, cmd.String("merchant-code"), readerID); err != nil {
+		return fmt.Errorf("terminate reader checkout: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(map[string]string{"status": "termination_requested"})
+	}
+
+	message.Success("Reader checkout termination requested")
+	return nil
+}
+
+func renderReader(reader *sumup.Reader) {
+	if reader == nil {
+		return
+	}
+
+	display.DataList([]attribute.KeyValue{
+		attribute.ID(string(reader.ID)),
+		attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
+		attribute.Attribute("Status", attribute.Styled(string(reader.Status))),
+		attribute.Attribute("Model", attribute.Styled(string(reader.Device.Model))),
+		attribute.Attribute("Identifier", attribute.Styled(reader.Device.Identifier)),
+		attribute.Attribute("Updated At", attribute.Styled(reader.UpdatedAt.UTC().Format(time.RFC3339))),
+		attribute.OptionalString("Service Account ID", reader.ServiceAccountID),
+	})
 }
 
 func readerStatusBatteryLevel(v *float32) string {
