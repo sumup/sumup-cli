@@ -235,7 +235,6 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 		rows,
 	)
 	return nil
-	return nil
 }
 
 func createMember(ctx context.Context, cmd *cli.Command) error {
@@ -281,7 +280,6 @@ func createMember(ctx context.Context, cmd *cli.Command) error {
 		attribute.ID(response.ID),
 	})
 	return nil
-	return nil
 }
 
 func inviteMember(ctx context.Context, cmd *cli.Command) error {
@@ -313,7 +311,6 @@ func inviteMember(ctx context.Context, cmd *cli.Command) error {
 	display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(response.ID),
 	})
-	return nil
 	return nil
 }
 
