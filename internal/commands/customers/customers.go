@@ -3,6 +3,7 @@ package customers
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -137,11 +138,11 @@ func createCustomer(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(customer)
+		return display.PrintJSON(appCtx.Output, customer)
 	}
 
 	message.Success("Customer created")
-	renderCustomer(customer)
+	renderCustomer(appCtx.Output, customer)
 	return nil
 }
 
@@ -162,10 +163,10 @@ func getCustomer(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(customer)
+		return display.PrintJSON(appCtx.Output, customer)
 	}
 
-	renderCustomer(customer)
+	renderCustomer(appCtx.Output, customer)
 	return nil
 }
 
@@ -197,11 +198,11 @@ func updateCustomer(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(customer)
+		return display.PrintJSON(appCtx.Output, customer)
 	}
 
 	message.Success("Customer updated")
-	renderCustomer(customer)
+	renderCustomer(appCtx.Output, customer)
 	return nil
 }
 
@@ -221,7 +222,7 @@ func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(instruments)
+		return display.PrintJSON(appCtx.Output, instruments)
 	}
 
 	rows := make([][]attribute.Value, 0, len(*instruments))
@@ -236,6 +237,7 @@ func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	display.RenderTable(
+		appCtx.Output,
 		"Payment Instruments",
 		[]string{"Token", "Type", "Card", "Active", "Created At"},
 		rows,
@@ -259,7 +261,7 @@ func deactivatePaymentInstrument(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(map[string]string{"status": "deactivated"})
+		return display.PrintJSON(appCtx.Output, map[string]string{"status": "deactivated"})
 	}
 
 	message.Success("Payment instrument deactivated")
@@ -351,7 +353,7 @@ func parseDate(value string) (*datetime.Date, error) {
 	return &date, nil
 }
 
-func renderCustomer(customer *sumup.Customer) {
+func renderCustomer(w io.Writer, customer *sumup.Customer) {
 	if customer == nil {
 		return
 	}
@@ -360,7 +362,7 @@ func renderCustomer(customer *sumup.Customer) {
 		attribute.Attribute("Customer ID", attribute.Styled(customer.CustomerID)),
 	}
 	if customer.PersonalDetails == nil {
-		display.DataList(details)
+		display.DataList(w, details)
 		return
 	}
 
@@ -377,7 +379,7 @@ func renderCustomer(customer *sumup.Customer) {
 		details = append(details, attribute.Attribute("Birth Date", attribute.Styled("-")))
 	}
 	details = append(details, attribute.Attribute("Address", attribute.Styled(formatAddress(personal.Address))))
-	display.DataList(details)
+	display.DataList(w, details)
 }
 
 func formatAddress(address *sumup.AddressLegacy) string {

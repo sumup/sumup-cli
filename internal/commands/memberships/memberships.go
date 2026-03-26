@@ -102,7 +102,7 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(response)
+		return display.PrintJSON(appCtx.Output, response)
 	}
 
 	rows := make([][]attribute.Value, 0, len(response.Items))
@@ -118,6 +118,7 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	display.RenderTable(
+		appCtx.Output,
 		"Memberships",
 		[]string{"ID", "Resource", "Type", "Roles", "Status", "Created At"},
 		rows,

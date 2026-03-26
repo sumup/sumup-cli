@@ -3,6 +3,7 @@ package members
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -213,7 +214,7 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(response.Items)
+		return display.PrintJSON(appCtx.Output, response.Items)
 	}
 
 	rows := make([][]attribute.Value, 0, len(response.Items))
@@ -228,10 +229,12 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	display.RenderTable(
+		appCtx.Output,
 		"Members",
 		[]string{"ID", "Email", "Roles", "Status", "Created At"},
 		rows,
 	)
+	return nil
 	return nil
 }
 
@@ -270,13 +273,14 @@ func createMember(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(response)
+		return display.PrintJSON(appCtx.Output, response)
 	}
 
 	message.Success("Member created")
-	display.DataList([]attribute.KeyValue{
+	display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(response.ID),
 	})
+	return nil
 	return nil
 }
 
@@ -302,13 +306,14 @@ func inviteMember(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(response)
+		return display.PrintJSON(appCtx.Output, response)
 	}
 
 	message.Success("Member invited")
-	display.DataList([]attribute.KeyValue{
+	display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(response.ID),
 	})
+	return nil
 	return nil
 }
 
@@ -334,10 +339,10 @@ func getMember(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(member)
+		return display.PrintJSON(appCtx.Output, member)
 	}
 
-	renderMember(member)
+	renderMember(appCtx.Output, member)
 	return nil
 }
 
@@ -395,11 +400,11 @@ func updateMember(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(member)
+		return display.PrintJSON(appCtx.Output, member)
 	}
 
 	message.Success("Member updated")
-	renderMember(member)
+	renderMember(appCtx.Output, member)
 	return nil
 }
 
@@ -475,7 +480,7 @@ func membershipStatusLabel(status sumup.MembershipStatus) string {
 	}
 }
 
-func renderMember(member *sumup.Member) {
+func renderMember(w io.Writer, member *sumup.Member) {
 	if member == nil {
 		return
 	}
@@ -494,7 +499,7 @@ func renderMember(member *sumup.Member) {
 		attribute.Attribute("Updated At", attribute.Styled(updatedAt)),
 	}
 
-	display.DataList(details)
+	display.DataList(w, details)
 }
 
 func memberNickname(member *sumup.Member) string {

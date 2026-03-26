@@ -94,7 +94,7 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appCtx.JSONOutput {
-		return display.PrintJSON(payoutList)
+		return display.PrintJSON(appCtx.Output, payoutList)
 	}
 
 	rows := make([][]attribute.Value, 0, len(*payoutList))
@@ -116,6 +116,7 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	display.RenderTable(
+		appCtx.Output,
 		"Payouts",
 		[]string{"ID", "Date", "Amount", "Fee", "Status", "Type", "Reference"},
 		rows,

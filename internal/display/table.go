@@ -2,6 +2,7 @@ package display
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -13,9 +14,9 @@ import (
 const fallbackWidth = 120
 
 // RenderTable prints rows in a table using the terminal width to wrap columns.
-func RenderTable(title string, headers []string, rows [][]attribute.Value) {
+func RenderTable(w io.Writer, title string, headers []string, rows [][]attribute.Value) {
 	if len(rows) == 0 {
-		fmt.Printf("%s: No items to display\n", title)
+		writef(w, "%s: No items to display\n", title)
 		return
 	}
 
@@ -71,8 +72,9 @@ func RenderTable(title string, headers []string, rows [][]attribute.Value) {
 			return style
 		})
 
-	fmt.Println(title)
-	fmt.Println(t.Render())
+	out := writerOrStdout(w)
+	_, _ = fmt.Fprintln(out, title)
+	_, _ = fmt.Fprintln(out, t.Render())
 }
 
 func isIDHeader(header string) bool {
