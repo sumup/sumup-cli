@@ -2,6 +2,7 @@ package display_test
 
 import (
 	"bytes"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -16,8 +17,9 @@ func TestPrintJSON(t *testing.T) {
 		t.Fatalf("PrintJSON() error = %v", err)
 	}
 
-	if !strings.Contains(out.String(), `"status": "ok"`) {
-		t.Fatalf("PrintJSON() output = %q, want JSON body", out.String())
+	const want = "{\n  \"status\": \"ok\"\n}\n"
+	if normalizeOutput(out.String()) != normalizeOutput(want) {
+		t.Fatalf("PrintJSON() output = %q, want %q", out.String(), want)
 	}
 }
 
@@ -30,9 +32,9 @@ func TestDataList(t *testing.T) {
 		t.Fatalf("DataList() error = %v", err)
 	}
 
-	rendered := out.String()
-	if !strings.Contains(rendered, "ok") || !strings.Contains(rendered, ":") {
-		t.Fatalf("DataList() output = %q, want rendered pair", rendered)
+	const want = "Status: ok\n"
+	if normalizeOutput(out.String()) != normalizeOutput(want) {
+		t.Fatalf("DataList() output = %q, want %q", out.String(), want)
 	}
 }
 
@@ -45,9 +47,9 @@ func TestRenderTable(t *testing.T) {
 		t.Fatalf("RenderTable() error = %v", err)
 	}
 
-	rendered := out.String()
-	if !strings.Contains(rendered, "Items") || !strings.Contains(rendered, "123") {
-		t.Fatalf("RenderTable() output = %q, want title and row content", rendered)
+	const want = "Items\nID\n123"
+	if normalizeOutput(out.String()) != normalizeOutput(want) {
+		t.Fatalf("RenderTable() output = %q, want normalized %q", out.String(), want)
 	}
 }
 
@@ -64,6 +66,22 @@ func TestRenderTableWithOptionsSupportsEmptyTextWithoutTitle(t *testing.T) {
 	if strings.TrimSpace(rendered) != "Nothing here" {
 		t.Fatalf("RenderTableWithOptions() output = %q, want custom empty text", rendered)
 	}
+}
+
+var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func normalizeOutput(value string) string {
+	value = ansiPattern.ReplaceAllString(value, "")
+	lines := strings.Split(strings.ReplaceAll(value, "\r\n", "\n"), "\n")
+	normalized := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		normalized = append(normalized, line)
+	}
+	return strings.Join(normalized, "\n")
 }
 
 func TestRenderSections(t *testing.T) {

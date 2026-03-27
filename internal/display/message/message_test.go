@@ -2,7 +2,6 @@ package message_test
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 
 	"github.com/sumup/sumup-cli/internal/display/message"
@@ -13,11 +12,8 @@ func TestSuccessWritesToProvidedWriterWithoutANSIForBuffers(t *testing.T) {
 
 	message.Success(&out, "created %s", "reader")
 
-	rendered := out.String()
-	if !strings.Contains(rendered, "created reader") {
-		t.Fatalf("Success() output = %q, want rendered message", rendered)
-	}
-	if strings.Contains(rendered, "\033[") {
-		t.Fatalf("Success() output = %q, want no ANSI escapes for non-terminal writers", rendered)
+	const want = "✓ created reader\n"
+	if out.String() != want {
+		t.Fatalf("Success() output = %q, want %q", out.String(), want)
 	}
 }
