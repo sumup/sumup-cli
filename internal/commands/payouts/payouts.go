@@ -19,7 +19,7 @@ import (
 func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "payouts",
-		Usage: "Placeholder for the payouts API resource.",
+		Usage: "Commands for listing merchant payouts.",
 		Commands: []*cli.Command{
 			{
 				Name:   "list",
