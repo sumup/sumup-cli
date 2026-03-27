@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"golang.org/x/term"
 )
@@ -72,5 +73,18 @@ func supportsColor(w io.Writer) bool {
 		return false
 	}
 
-	return term.IsTerminal(int(file.Fd()))
+	return shouldUseColor(term.IsTerminal(int(file.Fd())), os.Getenv("TERM"), os.Getenv("NO_COLOR"))
+}
+
+func shouldUseColor(isTerminal bool, termEnv, noColorEnv string) bool {
+	if !isTerminal {
+		return false
+	}
+	if strings.TrimSpace(noColorEnv) != "" {
+		return false
+	}
+	if strings.EqualFold(strings.TrimSpace(termEnv), "dumb") {
+		return false
+	}
+	return true
 }
