@@ -257,10 +257,8 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	reader, err := appCtx.Client.Readers.Create(ctx, merchantCode, body)
-	if pErr := new(sumup.Problem); errors.As(err, &pErr) {
-		return fmt.Errorf("create reader: %v %v", *pErr.Detail, *pErr.Title)
-	} else if err != nil {
-		return fmt.Errorf("create reader: %w", err)
+	if err != nil {
+		return formatCreateReaderError(err)
 	}
 
 	if appCtx.JSONOutput {
@@ -275,6 +273,13 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 		attribute.Attribute("Model", attribute.Styled(string(reader.Device.Model))),
 		attribute.Attribute("Identifier", attribute.Styled(reader.Device.Identifier)),
 	})
+}
+
+func formatCreateReaderError(err error) error {
+	if pErr := new(sumup.Problem); errors.As(err, &pErr) {
+		return fmt.Errorf("create reader: %w", pErr)
+	}
+	return fmt.Errorf("create reader: %w", err)
 }
 
 func deleteReader(ctx context.Context, cmd *cli.Command) error {

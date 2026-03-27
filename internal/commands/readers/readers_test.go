@@ -1,8 +1,10 @@
 package readers
 
 import (
+	"strings"
 	"testing"
 
+	sumup "github.com/sumup/sumup-go"
 	"github.com/urfave/cli/v3"
 )
 
@@ -15,6 +17,17 @@ func TestContextAwareReaderCommandsDoNotRequireMerchantCodeFlag(t *testing.T) {
 		if flag.Required {
 			t.Fatalf("%s merchant-code flag is required, want context fallback", name)
 		}
+	}
+}
+
+func TestCreateReaderProblemErrorDoesNotPanicOnMissingFields(t *testing.T) {
+	err := formatCreateReaderError(&sumup.Problem{})
+
+	if err == nil {
+		t.Fatal("expected formatted error")
+	}
+	if !strings.Contains(err.Error(), "create reader:") {
+		t.Fatalf("error = %q, want create reader prefix", err.Error())
 	}
 }
 
