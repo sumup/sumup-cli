@@ -5,29 +5,32 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/sumup/sumup-cli/internal/display/message"
 )
 
 func TestSuccessWritesToProvidedWriterWithoutANSIForBuffers(t *testing.T) {
-	var out bytes.Buffer
+	t.Run("writes plain output for non-terminal writers", func(t *testing.T) {
+		var out bytes.Buffer
 
-	if err := message.Success(&out, "created %s", "reader"); err != nil {
-		t.Fatalf("Success() error = %v", err)
-	}
+		err := message.Success(&out, "created %s", "reader")
 
-	const want = "✓ created reader\n"
-	if out.String() != want {
-		t.Fatalf("Success() output = %q, want %q", out.String(), want)
-	}
+		require.NoError(t, err)
+		assert.Equal(t, "✓ created reader\n", out.String())
+	})
 }
 
 func TestSuccessReturnsWriterErrors(t *testing.T) {
-	expectedErr := errors.New("write failed")
+	t.Run("returns writer errors", func(t *testing.T) {
+		expectedErr := errors.New("write failed")
 
-	err := message.Success(failingWriter{err: expectedErr}, "created")
-	if !errors.Is(err, expectedErr) {
-		t.Fatalf("Success() error = %v, want %v", err, expectedErr)
-	}
+		err := message.Success(failingWriter{err: expectedErr}, "created")
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, expectedErr)
+	})
 }
 
 type failingWriter struct {
