@@ -79,6 +79,16 @@ func TestNewContext(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "MCONFIG", appCtx.MerchantCode)
 	})
+
+	t.Run("defaults status output to stderr", func(t *testing.T) {
+		tempDir := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", tempDir)
+		t.Setenv("HOME", tempDir)
+
+		appCtx, err := app.NewContext("", "", false, false)
+		require.NoError(t, err)
+		assert.NotNil(t, appCtx.StatusOutput)
+	})
 }
 
 func runGetMerchantCode(t *testing.T, args []string, appCtx *app.Context) (string, error) {

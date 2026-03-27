@@ -25,6 +25,7 @@ type Context struct {
 	Locale          string
 	MerchantCode    string
 	Output          io.Writer
+	StatusOutput    io.Writer
 }
 
 // NewContext constructs the CLI context with an initialized SumUp API client.
@@ -50,6 +51,7 @@ func NewContext(apiKey, baseURL string, jsonOutput bool, exactTimestamps bool) (
 		Locale:          detectLocale(),
 		MerchantCode:    cfg.CurrentMerchantCode,
 		Output:          os.Stdout,
+		StatusOutput:    os.Stderr,
 	}, nil
 }
 
