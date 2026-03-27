@@ -47,6 +47,7 @@ func NewCommand() *cli.Command {
 }
 
 type searchResultMsg struct {
+	requestID   int
 	memberships []sumup.Membership
 	err         error
 }
@@ -86,6 +87,10 @@ type model struct {
 	lastSearchQuery string
 	// Whether a search is pending (debouncing)
 	searchPending bool
+	// Monotonic counter for searches so stale async responses can be ignored.
+	nextSearchID int
+	// Most recent in-flight search request.
+	activeSearchID int
 }
 
 func (m model) Init() tea.Cmd {
@@ -99,6 +104,8 @@ func (m *model) clearSearch() {
 	m.displayed = m.currentLevel.memberships
 	m.lastSearchQuery = ""
 	m.cursor = 0
+	m.loading = false
+	m.activeSearchID = 0
 }
 
 // pushLevel saves current level to stack and sets a new current level
@@ -119,6 +126,8 @@ func (m *model) popLevel() {
 	m.currentLevel = previousLevel
 	m.displayed = previousLevel.memberships
 	m.cursor = 0
+	m.loading = false
+	m.activeSearchID = 0
 }
 
 // drillDownIntoOrg navigates into an organization to view its child merchants
@@ -132,7 +141,7 @@ func (m *model) drillDownIntoOrg(orgID, orgName string) tea.Cmd {
 	}
 	m.pushLevel(newLevel)
 	m.loading = true
-	return m.searchMemberships("", orgID, parentType)
+	return m.startMembershipSearch("", orgID, parentType)
 }
 
 // debounce returns a command that waits for the debounce delay before sending a searchDebounceMsg
@@ -143,7 +152,15 @@ func debounce() tea.Cmd {
 }
 
 // searchMemberships performs an API call to search for memberships by name
-func (m model) searchMemberships(query string, parentID string, parentType sumup.ResourceType) tea.Cmd {
+func (m *model) startMembershipSearch(query string, parentID string, parentType sumup.ResourceType) tea.Cmd {
+	m.nextSearchID++
+	requestID := m.nextSearchID
+	m.activeSearchID = requestID
+
+	return m.searchMemberships(requestID, query, parentID, parentType)
+}
+
+func (m model) searchMemberships(requestID int, query string, parentID string, parentType sumup.ResourceType) tea.Cmd {
 	return func() tea.Msg {
 		status := sumup.MembershipStatusAccepted
 		params := sumup.MembershipsListParams{
@@ -164,10 +181,10 @@ func (m model) searchMemberships(query string, parentID string, parentType sumup
 
 		response, err := m.client.Memberships.List(m.ctx, params)
 		if err != nil {
-			return searchResultMsg{err: err}
+			return searchResultMsg{requestID: requestID, err: err}
 		}
 
-		return searchResultMsg{memberships: response.Items}
+		return searchResultMsg{requestID: requestID, memberships: response.Items}
 	}
 }
 
@@ -176,6 +193,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case searchResultMsg:
+		if msg.requestID != m.activeSearchID {
+			return m, nil
+		}
+
 		m.loading = false
 		if msg.err != nil {
 			m.err = msg.err
@@ -199,7 +220,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.lastSearchQuery = query
 		m.loading = true
-		return m, m.searchMemberships(query, m.currentLevel.parentID, m.currentLevel.parentType)
+		return m, m.startMembershipSearch(query, m.currentLevel.parentID, m.currentLevel.parentType)
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
