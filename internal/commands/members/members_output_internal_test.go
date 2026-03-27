@@ -2,6 +2,8 @@ package members
 
 import (
 	"bytes"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,7 +25,7 @@ func TestRenderDeleteMemberResult(t *testing.T) {
 		err := renderDeleteMemberResult(appCtx)
 
 		require.NoError(t, err)
-		assert.Contains(t, out.String(), `"status": "deleted"`)
+		assert.Equal(t, "{\n  \"status\": \"deleted\"\n}\n", out.String())
 	})
 
 	t.Run("writes status message in human mode", func(t *testing.T) {
@@ -34,7 +36,7 @@ func TestRenderDeleteMemberResult(t *testing.T) {
 		err := renderDeleteMemberResult(appCtx)
 
 		require.NoError(t, err)
-		assert.Contains(t, statusOut.String(), "Member deleted")
+		assert.Equal(t, "✓ Member deleted\n", statusOut.String())
 	})
 }
 
@@ -56,7 +58,22 @@ func TestRenderMember(t *testing.T) {
 		err := renderMember(&app.Context{Output: &out, ExactTimestamps: true}, &out, member)
 
 		require.NoError(t, err)
-		assert.Contains(t, out.String(), createdAt.In(time.Local).Format(time.RFC3339))
-		assert.Contains(t, out.String(), updatedAt.In(time.Local).Format(time.RFC3339))
+		assert.Equal(t, "ID: member-1\nEmail: member@example.com\nRoles: role_employee\nStatus: Accepted\nNickname: -\nCreated At: "+createdAt.In(time.Local).Format(time.RFC3339)+"\nUpdated At: "+updatedAt.In(time.Local).Format(time.RFC3339), normalizeOutput(out.String()))
 	})
+}
+
+var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func normalizeOutput(value string) string {
+	value = ansiPattern.ReplaceAllString(strings.ReplaceAll(value, "\r\n", "\n"), "")
+	lines := strings.Split(value, "\n")
+	normalized := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		normalized = append(normalized, line)
+	}
+	return strings.Join(normalized, "\n")
 }

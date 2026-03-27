@@ -18,7 +18,7 @@ func TestRenderRefundResult(t *testing.T) {
 		err := renderRefundResult(appCtx)
 
 		require.NoError(t, err)
-		assert.Contains(t, statusOut.String(), "Transaction refunded")
+		assert.Equal(t, "✓ Transaction refunded\n", statusOut.String())
 	})
 
 	t.Run("prints json acknowledgement when requested", func(t *testing.T) {
@@ -32,6 +32,6 @@ func TestRenderRefundResult(t *testing.T) {
 		err := renderRefundResult(appCtx)
 
 		require.NoError(t, err)
-		assert.Contains(t, out.String(), `"status": "refunded"`)
+		assert.Equal(t, "{\n  \"status\": \"refunded\"\n}\n", out.String())
 	})
 }
