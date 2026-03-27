@@ -1,13 +1,19 @@
 package display
 
 import (
+	"io"
 	"os"
 
 	"golang.org/x/term"
 )
 
-func terminalWidth() (int, bool) {
-	fd := int(os.Stdout.Fd())
+func terminalWidth(w io.Writer) (int, bool) {
+	file, ok := writerOrStdout(w).(*os.File)
+	if !ok {
+		return 0, false
+	}
+
+	fd := int(file.Fd())
 	if !term.IsTerminal(fd) {
 		return 0, false
 	}

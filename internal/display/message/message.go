@@ -1,6 +1,12 @@
 package message
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+	"os"
+
+	"golang.org/x/term"
+)
 
 const (
 	resetColor  = "\033[0m"
@@ -18,29 +24,52 @@ const (
 )
 
 // Success prints a green success message prefixed with a check mark.
-func Success(format string, args ...any) {
-	printColored(greenColor, successSymbol, format, args...)
+func Success(w io.Writer, format string, args ...any) {
+	printColored(w, greenColor, successSymbol, format, args...)
 }
 
 // Warn prints a yellow warning message prefixed with a caution sign.
-func Warn(format string, args ...any) {
-	printColored(yellowColor, warnSymbol, format, args...)
+func Warn(w io.Writer, format string, args ...any) {
+	printColored(w, yellowColor, warnSymbol, format, args...)
 }
 
 // Notify prints a blue informational message prefixed with an info sign.
-func Notify(format string, args ...any) {
-	printColored(blueColor, notifySymbol, format, args...)
+func Notify(w io.Writer, format string, args ...any) {
+	printColored(w, blueColor, notifySymbol, format, args...)
 }
 
 // Error prints a red error message prefixed with a cross.
-func Error(format string, args ...any) {
-	printColored(redColor, errorSymbol, format, args...)
+func Error(w io.Writer, format string, args ...any) {
+	printColored(w, redColor, errorSymbol, format, args...)
 }
 
-func printColored(colorCode, symbol, format string, args ...any) {
+func printColored(w io.Writer, colorCode, symbol, format string, args ...any) {
+	out := writerOrDefault(w, os.Stdout)
 	message := format
 	if len(args) > 0 {
 		message = fmt.Sprintf(format, args...)
 	}
-	fmt.Printf("%s%s %s%s\n", colorCode, symbol, message, resetColor)
+
+	if supportsColor(out) {
+		_, _ = fmt.Fprintf(out, "%s%s %s%s\n", colorCode, symbol, message, resetColor)
+		return
+	}
+
+	_, _ = fmt.Fprintf(out, "%s %s\n", symbol, message)
+}
+
+func writerOrDefault(w io.Writer, fallback io.Writer) io.Writer {
+	if w == nil {
+		return fallback
+	}
+	return w
+}
+
+func supportsColor(w io.Writer) bool {
+	file, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+
+	return term.IsTerminal(int(file.Fd()))
 }

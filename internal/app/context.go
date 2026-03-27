@@ -92,7 +92,11 @@ func GetAppContext(cmd *cli.Command) (*Context, error) {
 // falling back to the stored context if the flag is not set.
 func GetMerchantCode(cmd *cli.Command, flagName string) (string, error) {
 	if cmd.IsSet(flagName) {
-		return cmd.String(flagName), nil
+		merchantCode := strings.TrimSpace(cmd.String(flagName))
+		if merchantCode == "" {
+			return "", errors.New("merchant code is required. Provide --merchant-code flag or set context with 'sumup context set'")
+		}
+		return merchantCode, nil
 	}
 
 	appCtx, err := GetAppContext(cmd)

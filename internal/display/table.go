@@ -20,7 +20,7 @@ func RenderTable(w io.Writer, title string, headers []string, rows [][]attribute
 		return
 	}
 
-	width, ok := terminalWidth()
+	width, ok := terminalWidth(w)
 	if !ok {
 		width = fallbackWidth
 	}

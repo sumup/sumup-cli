@@ -47,6 +47,7 @@ func NewCommand() *cli.Command {
 }
 
 type searchResultMsg struct {
+	requestID   int
 	memberships []sumup.Membership
 	err         error
 }
@@ -86,6 +87,10 @@ type model struct {
 	lastSearchQuery string
 	// Whether a search is pending (debouncing)
 	searchPending bool
+	// Monotonic counter for searches so stale async responses can be ignored.
+	nextSearchID int
+	// Most recent in-flight search request.
+	activeSearchID int
 }
 
 func (m model) Init() tea.Cmd {
@@ -99,6 +104,8 @@ func (m *model) clearSearch() {
 	m.displayed = m.currentLevel.memberships
 	m.lastSearchQuery = ""
 	m.cursor = 0
+	m.loading = false
+	m.activeSearchID = 0
 }
 
 // pushLevel saves current level to stack and sets a new current level
@@ -119,6 +126,8 @@ func (m *model) popLevel() {
 	m.currentLevel = previousLevel
 	m.displayed = previousLevel.memberships
 	m.cursor = 0
+	m.loading = false
+	m.activeSearchID = 0
 }
 
 // drillDownIntoOrg navigates into an organization to view its child merchants
@@ -132,7 +141,7 @@ func (m *model) drillDownIntoOrg(orgID, orgName string) tea.Cmd {
 	}
 	m.pushLevel(newLevel)
 	m.loading = true
-	return m.searchMemberships("", orgID, parentType)
+	return m.startMembershipSearch("", orgID, parentType)
 }
 
 // debounce returns a command that waits for the debounce delay before sending a searchDebounceMsg
@@ -143,7 +152,15 @@ func debounce() tea.Cmd {
 }
 
 // searchMemberships performs an API call to search for memberships by name
-func (m model) searchMemberships(query string, parentID string, parentType sumup.ResourceType) tea.Cmd {
+func (m *model) startMembershipSearch(query string, parentID string, parentType sumup.ResourceType) tea.Cmd {
+	m.nextSearchID++
+	requestID := m.nextSearchID
+	m.activeSearchID = requestID
+
+	return m.searchMemberships(requestID, query, parentID, parentType)
+}
+
+func (m model) searchMemberships(requestID int, query string, parentID string, parentType sumup.ResourceType) tea.Cmd {
 	return func() tea.Msg {
 		status := sumup.MembershipStatusAccepted
 		params := sumup.MembershipsListParams{
@@ -164,10 +181,10 @@ func (m model) searchMemberships(query string, parentID string, parentType sumup
 
 		response, err := m.client.Memberships.List(m.ctx, params)
 		if err != nil {
-			return searchResultMsg{err: err}
+			return searchResultMsg{requestID: requestID, err: err}
 		}
 
-		return searchResultMsg{memberships: response.Items}
+		return searchResultMsg{requestID: requestID, memberships: response.Items}
 	}
 }
 
@@ -176,6 +193,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case searchResultMsg:
+		if msg.requestID != m.activeSearchID {
+			return m, nil
+		}
+
 		m.loading = false
 		if msg.err != nil {
 			m.err = msg.err
@@ -199,7 +220,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.lastSearchQuery = query
 		m.loading = true
-		return m, m.searchMemberships(query, m.currentLevel.parentID, m.currentLevel.parentType)
+		return m, m.startMembershipSearch(query, m.currentLevel.parentID, m.currentLevel.parentType)
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
@@ -373,7 +394,7 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	message.Notify("Fetching your sumup...")
+	message.Notify(appCtx.Output, "Fetching your sumup...")
 
 	status := sumup.MembershipStatusAccepted
 	params := sumup.MembershipsListParams{
@@ -386,7 +407,7 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if len(response.Items) == 0 {
-		message.Warn("No memberships found.")
+		message.Warn(appCtx.Output, "No memberships found.")
 		return nil
 	}
 
@@ -411,12 +432,12 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 
 	finalModel := result.(model)
 	if finalModel.selected == nil {
-		message.Warn("No merchant selected.")
+		message.Warn(appCtx.Output, "No merchant selected.")
 		return nil
 	}
 
 	if finalModel.selected.Resource.Type == "organization" {
-		message.Warn("Please select a merchant, not an organization.")
+		message.Warn(appCtx.Output, "Please select a merchant, not an organization.")
 		return nil
 	}
 
@@ -430,31 +451,41 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("save merchant context: %w", err)
 	}
 
-	message.Success("Merchant context set to: %s (%s)", finalModel.selected.Resource.Name, merchantCode)
+	message.Success(appCtx.Output, "Merchant context set to: %s (%s)", finalModel.selected.Resource.Name, merchantCode)
 	return nil
 }
 
-func getContext(_ context.Context, _ *cli.Command) error {
+func getContext(_ context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+
 	merchantCode, err := config.GetCurrentMerchantCode()
 	if err != nil {
 		return fmt.Errorf("get merchant context: %w", err)
 	}
 
 	if merchantCode == "" {
-		message.Notify("No merchant context set.")
-		message.Notify("Use 'sumup context set' to set a merchant context.")
+		message.Notify(appCtx.Output, "No merchant context set.")
+		message.Notify(appCtx.Output, "Use 'sumup context set' to set a merchant context.")
 		return nil
 	}
 
-	message.Notify("Current merchant context: %s", merchantCode)
+	message.Notify(appCtx.Output, "Current merchant context: %s", merchantCode)
 	return nil
 }
 
-func unsetContext(_ context.Context, _ *cli.Command) error {
+func unsetContext(_ context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+
 	if err := config.SetCurrentMerchantCode(""); err != nil {
 		return fmt.Errorf("unset merchant context: %w", err)
 	}
 
-	message.Success("Merchant context unset.")
+	message.Success(appCtx.Output, "Merchant context unset.")
 	return nil
 }

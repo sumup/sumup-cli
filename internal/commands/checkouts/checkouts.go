@@ -240,7 +240,7 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, checkout)
 	}
 
-	message.Success("Checkout created")
+	message.Success(appCtx.Output, "Checkout created")
 	details := make([]attribute.KeyValue, 0, 5)
 	if checkout.ID != nil {
 		details = append(details, attribute.ID(*checkout.ID))
@@ -275,7 +275,7 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, checkout)
 	}
 
-	message.Success("Checkout deactivated")
+	message.Success(appCtx.Output, "Checkout deactivated")
 	details := make([]attribute.KeyValue, 0, 4)
 	if checkout.ID != nil {
 		details = append(details, attribute.ID(*checkout.ID))
@@ -405,13 +405,13 @@ func processCheckout(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if response.CheckoutSuccess != nil {
-		message.Success("Checkout processed")
+		message.Success(appCtx.Output, "Checkout processed")
 		renderCheckout(appCtx, response.CheckoutSuccess)
 		return nil
 	}
 
 	if response.CheckoutAccepted != nil {
-		message.Success("Checkout accepted")
+		message.Success(appCtx.Output, "Checkout accepted")
 		if response.CheckoutAccepted.NextStep != nil {
 			display.DataList(appCtx.Output, []attribute.KeyValue{
 				attribute.OptionalString("Method", response.CheckoutAccepted.NextStep.Method),

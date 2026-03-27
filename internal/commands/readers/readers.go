@@ -94,10 +94,9 @@ func NewCommand() *cli.Command {
 				ArgsUsage: "<reader-id>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "merchant-code",
-						Usage:    "Merchant code that owns the reader.",
-						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
-						Required: true,
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the reader. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 					&cli.StringFlag{
 						Name:  "if-modified-since",
@@ -112,10 +111,9 @@ func NewCommand() *cli.Command {
 				ArgsUsage: "<reader-id>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "merchant-code",
-						Usage:    "Merchant code that owns the reader.",
-						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
-						Required: true,
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the reader. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 					&cli.StringFlag{
 						Name:     "name",
@@ -131,10 +129,9 @@ func NewCommand() *cli.Command {
 				ArgsUsage: "<reader-id>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:     "merchant-code",
-						Usage:    "Merchant code that owns the reader.",
-						Sources:  cli.EnvVars("SUMUP_MERCHANT_CODE"),
-						Required: true,
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the reader. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
 			},
@@ -271,7 +268,7 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, reader)
 	}
 
-	message.Success("Reader created")
+	message.Success(appCtx.Output, "Reader created")
 	display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(string(reader.ID)),
 		attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
@@ -305,7 +302,7 @@ func deleteReader(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, map[string]string{"status": "deleted"})
 	}
 
-	message.Success("Reader deleted")
+	message.Success(appCtx.Output, "Reader deleted")
 	return nil
 }
 
@@ -384,7 +381,7 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, response)
 	}
 
-	message.Success("Checkout initiated")
+	message.Success(appCtx.Output, "Checkout initiated")
 	majorAmount := float64(value) / math.Pow10(cmd.Int("minor-unit"))
 	details := make([]attribute.KeyValue, 0, 2)
 	details = append(details, attribute.Attribute("Amount", attribute.Styled(currency.Format(majorAmount, parsedCurrency))))
@@ -444,6 +441,10 @@ func getReader(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
 	readerID, err := util.RequireSingleArg(cmd, "reader ID")
 	if err != nil {
 		return err
@@ -454,7 +455,7 @@ func getReader(ctx context.Context, cmd *cli.Command) error {
 		params.IfModifiedSince = &value
 	}
 
-	reader, err := appCtx.Client.Readers.Get(ctx, cmd.String("merchant-code"), sumup.ReaderID(readerID), params)
+	reader, err := appCtx.Client.Readers.Get(ctx, merchantCode, sumup.ReaderID(readerID), params)
 	if err != nil {
 		return fmt.Errorf("get reader: %w", err)
 	}
@@ -472,6 +473,10 @@ func updateReader(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
 	readerID, err := util.RequireSingleArg(cmd, "reader ID")
 	if err != nil {
 		return err
@@ -479,7 +484,7 @@ func updateReader(ctx context.Context, cmd *cli.Command) error {
 
 	name := sumup.ReaderName(cmd.String("name"))
 	body := sumup.ReadersUpdateParams{Name: &name}
-	reader, err := appCtx.Client.Readers.Update(ctx, cmd.String("merchant-code"), sumup.ReaderID(readerID), body)
+	reader, err := appCtx.Client.Readers.Update(ctx, merchantCode, sumup.ReaderID(readerID), body)
 	if err != nil {
 		return fmt.Errorf("update reader: %w", err)
 	}
@@ -488,7 +493,7 @@ func updateReader(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, reader)
 	}
 
-	message.Success("Reader updated")
+	message.Success(appCtx.Output, "Reader updated")
 	renderReader(appCtx.Output, reader)
 	return nil
 }
@@ -498,12 +503,16 @@ func terminateCheckout(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
 	readerID, err := util.RequireSingleArg(cmd, "reader ID")
 	if err != nil {
 		return err
 	}
 
-	if err := appCtx.Client.Readers.TerminateCheckout(ctx, cmd.String("merchant-code"), readerID); err != nil {
+	if err := appCtx.Client.Readers.TerminateCheckout(ctx, merchantCode, readerID); err != nil {
 		return fmt.Errorf("terminate reader checkout: %w", err)
 	}
 
@@ -511,7 +520,7 @@ func terminateCheckout(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, map[string]string{"status": "termination_requested"})
 	}
 
-	message.Success("Reader checkout termination requested")
+	message.Success(appCtx.Output, "Reader checkout termination requested")
 	return nil
 }
 
