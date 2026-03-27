@@ -20,7 +20,7 @@ import (
 func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "transactions",
-		Usage: "Placeholder for the transactions API resource.",
+		Usage: "Commands for listing, retrieving, and refunding transactions.",
 		Commands: []*cli.Command{
 			{
 				Name:   "list",
