@@ -12,6 +12,7 @@ import (
 	"github.com/sumup/sumup-go/datetime"
 
 	"github.com/sumup/sumup-cli/internal/app"
+	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
 	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
@@ -97,8 +98,9 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, payoutList)
 	}
 
-	rows := make([][]attribute.Value, 0, len(*payoutList))
-	for _, payout := range *payoutList {
+	payouts := util.SliceOrEmpty(payoutList)
+	rows := make([][]attribute.Value, 0, len(payouts))
+	for _, payout := range payouts {
 		fee := attribute.OptionalValue(payout.Fee)
 		if payout.Fee != nil {
 			fee = attribute.ValueOf(fmt.Sprintf("%.2f", *payout.Fee))

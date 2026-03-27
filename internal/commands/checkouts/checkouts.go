@@ -162,8 +162,9 @@ func listCheckouts(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, checkoutList)
 	}
 
-	rows := make([][]attribute.Value, 0, len(*checkoutList))
-	for _, checkout := range *checkoutList {
+	checkouts := util.SliceOrEmpty(checkoutList)
+	rows := make([][]attribute.Value, 0, len(checkouts))
+	for _, checkout := range checkouts {
 		status := "-"
 		if checkout.Status != nil {
 			status = string(*checkout.Status)
