@@ -13,10 +13,31 @@ import (
 
 const fallbackWidth = 120
 
+// TableOptions customizes human-readable table rendering.
+type TableOptions struct {
+	Title              string
+	EmptyText          string
+	HighlightIDColumns bool
+}
+
 // RenderTable prints rows in a table using the terminal width to wrap columns.
 func RenderTable(w io.Writer, title string, headers []string, rows [][]attribute.Value) {
+	RenderTableWithOptions(w, headers, rows, TableOptions{
+		Title:              title,
+		EmptyText:          "No items to display",
+		HighlightIDColumns: true,
+	})
+}
+
+// RenderTableWithOptions prints rows in a table using configurable presentation options.
+func RenderTableWithOptions(w io.Writer, headers []string, rows [][]attribute.Value, opts TableOptions) {
 	if len(rows) == 0 {
-		writef(w, "%s: No items to display\n", title)
+		title := strings.TrimSpace(opts.Title)
+		if title == "" {
+			writef(w, "%s\n", opts.EmptyText)
+			return
+		}
+		writef(w, "%s: %s\n", title, opts.EmptyText)
 		return
 	}
 
@@ -31,9 +52,11 @@ func RenderTable(w io.Writer, title string, headers []string, rows [][]attribute
 	defaultStyle := basePadding
 
 	idColumns := make([]bool, len(headers))
-	for i, header := range headers {
-		if isIDHeader(header) {
-			idColumns[i] = true
+	if opts.HighlightIDColumns {
+		for i, header := range headers {
+			if isIDHeader(header) {
+				idColumns[i] = true
+			}
 		}
 	}
 
@@ -73,7 +96,9 @@ func RenderTable(w io.Writer, title string, headers []string, rows [][]attribute
 		})
 
 	out := writerOrStdout(w)
-	_, _ = fmt.Fprintln(out, title)
+	if strings.TrimSpace(opts.Title) != "" {
+		_, _ = fmt.Fprintln(out, opts.Title)
+	}
 	_, _ = fmt.Fprintln(out, t.Render())
 }
 
