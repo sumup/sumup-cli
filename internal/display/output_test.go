@@ -46,3 +46,25 @@ func TestRenderTable(t *testing.T) {
 		t.Fatalf("RenderTable() output = %q, want title and row content", rendered)
 	}
 }
+
+func TestRenderSections(t *testing.T) {
+	var out bytes.Buffer
+
+	display.RenderSections(&out, []display.Section{
+		{
+			Title: "Transaction",
+			Pairs: []attribute.KeyValue{
+				attribute.Attribute("Status", attribute.Styled("ok")),
+			},
+		},
+		{
+			Title: "Events",
+			Lines: []string{"- created"},
+		},
+	})
+
+	rendered := out.String()
+	if !strings.Contains(rendered, "Transaction") || !strings.Contains(rendered, "Events") || !strings.Contains(rendered, "- created") {
+		t.Fatalf("RenderSections() output = %q, want section titles and lines", rendered)
+	}
+}

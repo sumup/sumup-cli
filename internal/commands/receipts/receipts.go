@@ -80,25 +80,32 @@ func getReceipt(ctx context.Context, cmd *cli.Command) error {
 }
 
 func renderReceipt(w io.Writer, receipt *sumup.Receipt) {
+	sections := make([]display.Section, 0, 4)
+
 	if transaction := receipt.TransactionData; transaction != nil {
-		writeLine(w, "Transaction")
-		display.DataList(w, []attribute.KeyValue{
-			attribute.OptionalString("Code", transaction.TransactionCode),
-			attribute.OptionalString("Status", transaction.Status),
-			attribute.OptionalString("Payment Type", transaction.PaymentType),
-			attribute.Attribute("Amount", attribute.Styled(receiptAmount(transaction))),
-			attribute.Attribute("Timestamp", attribute.Styled(timePointerToString(transaction.Timestamp))),
-			attribute.OptionalString("Entry Mode", transaction.EntryMode),
-			attribute.OptionalString("Verification", transaction.VerificationMethod),
-			attribute.Attribute("Card", attribute.Styled(receiptCard(transaction))),
+		sections = append(sections, display.Section{
+			Title: "Transaction",
+			Pairs: []attribute.KeyValue{
+				attribute.OptionalString("Code", transaction.TransactionCode),
+				attribute.OptionalString("Status", transaction.Status),
+				attribute.OptionalString("Payment Type", transaction.PaymentType),
+				attribute.Attribute("Amount", attribute.Styled(receiptAmount(transaction))),
+				attribute.Attribute("Timestamp", attribute.Styled(timePointerToString(transaction.Timestamp))),
+				attribute.OptionalString("Entry Mode", transaction.EntryMode),
+				attribute.OptionalString("Verification", transaction.VerificationMethod),
+				attribute.Attribute("Card", attribute.Styled(receiptCard(transaction))),
+			},
 		})
 	} else {
-		writeLine(w, "Transaction: -")
+		sections = append(sections, display.Section{
+			Title: "Transaction",
+			Lines: []string{"-"},
+		})
 	}
 
 	if merchant := receipt.MerchantData; merchant != nil {
-		writeLine(w, "\nMerchant")
 		pairs := make([]attribute.KeyValue, 0, 5)
+		lines := []string{}
 		if profile := merchant.MerchantProfile; profile != nil {
 			pairs = append(pairs, attribute.OptionalString("Name", profile.BusinessName))
 			pairs = append(pairs, attribute.OptionalString("Code", profile.MerchantCode))
@@ -109,40 +116,42 @@ func renderReceipt(w io.Writer, receipt *sumup.Receipt) {
 			}
 			pairs = append(pairs, attribute.OptionalString("Email", profile.Email))
 		} else {
-			writeLine(w, "Merchant profile unavailable")
+			lines = append(lines, "Merchant profile unavailable")
 		}
 		if merchant.Locale != nil && *merchant.Locale != "" {
 			pairs = append(pairs, attribute.Attribute("Locale", attribute.Styled(*merchant.Locale)))
 		}
-		display.DataList(w, pairs)
-	}
-
-	if acquirer := receipt.AcquirerData; acquirer != nil {
-		writeLine(w, "\nAcquirer")
-		display.DataList(w, []attribute.KeyValue{
-			attribute.OptionalString("Terminal ID", acquirer.Tid),
-			attribute.OptionalString("Authorization Code", acquirer.AuthorizationCode),
-			attribute.OptionalString("Return Code", acquirer.ReturnCode),
-			attribute.OptionalString("Local Time", acquirer.LocalTime),
+		sections = append(sections, display.Section{
+			Title: "Merchant",
+			Pairs: pairs,
+			Lines: lines,
 		})
 	}
 
-	if transaction := receipt.TransactionData; transaction != nil {
-		if len(transaction.Events) > 0 {
-			writef(w, "\nEvents (%d)\n", len(transaction.Events))
-			for _, event := range transaction.Events {
-				writef(w, "  - %s %s\n", enumValue(event.Type), enumValue(event.Status))
-			}
-		}
+	if acquirer := receipt.AcquirerData; acquirer != nil {
+		sections = append(sections, display.Section{
+			Title: "Acquirer",
+			Pairs: []attribute.KeyValue{
+				attribute.OptionalString("Terminal ID", acquirer.Tid),
+				attribute.OptionalString("Authorization Code", acquirer.AuthorizationCode),
+				attribute.OptionalString("Return Code", acquirer.ReturnCode),
+				attribute.OptionalString("Local Time", acquirer.LocalTime),
+			},
+		})
 	}
-}
 
-func writeLine(w io.Writer, value string) {
-	_, _ = fmt.Fprintln(w, value)
-}
+	if transaction := receipt.TransactionData; transaction != nil && len(transaction.Events) > 0 {
+		lines := make([]string, 0, len(transaction.Events))
+		for _, event := range transaction.Events {
+			lines = append(lines, fmt.Sprintf("- %s %s", enumValue(event.Type), enumValue(event.Status)))
+		}
+		sections = append(sections, display.Section{
+			Title: fmt.Sprintf("Events (%d)", len(transaction.Events)),
+			Lines: lines,
+		})
+	}
 
-func writef(w io.Writer, format string, args ...any) {
-	_, _ = fmt.Fprintf(w, format, args...)
+	display.RenderSections(w, sections)
 }
 
 func receiptAmount(transaction *sumup.ReceiptTransaction) string {
