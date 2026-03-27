@@ -248,8 +248,7 @@ func renderRefundResult(appCtx *app.Context) error {
 		return display.PrintJSON(appCtx.Output, map[string]string{"status": "refunded"})
 	}
 
-	message.Success(appCtx.StatusOutput, "Transaction refunded")
-	return nil
+	return message.Success(appCtx.StatusOutput, "Transaction refunded")
 }
 
 func transactionCardLabel(card *sumup.CardResponse) string {

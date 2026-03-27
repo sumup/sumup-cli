@@ -274,7 +274,9 @@ func createMember(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, response)
 	}
 
-	message.Success(appCtx.StatusOutput, "Member created")
+	if err := message.Success(appCtx.StatusOutput, "Member created"); err != nil {
+		return err
+	}
 	return display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(response.ID),
 	})
@@ -305,7 +307,9 @@ func inviteMember(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, response)
 	}
 
-	message.Success(appCtx.StatusOutput, "Member invited")
+	if err := message.Success(appCtx.StatusOutput, "Member invited"); err != nil {
+		return err
+	}
 	return display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(response.ID),
 	})
@@ -396,7 +400,9 @@ func updateMember(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, member)
 	}
 
-	message.Success(appCtx.StatusOutput, "Member updated")
+	if err := message.Success(appCtx.StatusOutput, "Member updated"); err != nil {
+		return err
+	}
 	return renderMember(appCtx.Output, member)
 }
 
@@ -498,8 +504,7 @@ func renderDeleteMemberResult(appCtx *app.Context) error {
 		return display.PrintJSON(appCtx.Output, map[string]string{"status": "deleted"})
 	}
 
-	message.Success(appCtx.StatusOutput, "Member deleted")
-	return nil
+	return message.Success(appCtx.StatusOutput, "Member deleted")
 }
 
 func memberNickname(member *sumup.Member) string {

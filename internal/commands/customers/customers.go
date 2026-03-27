@@ -141,7 +141,9 @@ func createCustomer(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, customer)
 	}
 
-	message.Success(appCtx.StatusOutput, "Customer created")
+	if err := message.Success(appCtx.StatusOutput, "Customer created"); err != nil {
+		return err
+	}
 	return renderCustomer(appCtx.Output, customer)
 }
 
@@ -199,7 +201,9 @@ func updateCustomer(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, customer)
 	}
 
-	message.Success(appCtx.StatusOutput, "Customer updated")
+	if err := message.Success(appCtx.StatusOutput, "Customer updated"); err != nil {
+		return err
+	}
 	return renderCustomer(appCtx.Output, customer)
 }
 
@@ -261,8 +265,7 @@ func deactivatePaymentInstrument(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, map[string]string{"status": "deactivated"})
 	}
 
-	message.Success(appCtx.StatusOutput, "Payment instrument deactivated")
-	return nil
+	return message.Success(appCtx.StatusOutput, "Payment instrument deactivated")
 }
 
 func customerDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails, int, error) {

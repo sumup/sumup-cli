@@ -24,26 +24,26 @@ const (
 )
 
 // Success prints a green success message prefixed with a check mark.
-func Success(w io.Writer, format string, args ...any) {
-	printColored(w, greenColor, successSymbol, format, args...)
+func Success(w io.Writer, format string, args ...any) error {
+	return printColored(w, greenColor, successSymbol, format, args...)
 }
 
 // Warn prints a yellow warning message prefixed with a caution sign.
-func Warn(w io.Writer, format string, args ...any) {
-	printColored(w, yellowColor, warnSymbol, format, args...)
+func Warn(w io.Writer, format string, args ...any) error {
+	return printColored(w, yellowColor, warnSymbol, format, args...)
 }
 
 // Notify prints a blue informational message prefixed with an info sign.
-func Notify(w io.Writer, format string, args ...any) {
-	printColored(w, blueColor, notifySymbol, format, args...)
+func Notify(w io.Writer, format string, args ...any) error {
+	return printColored(w, blueColor, notifySymbol, format, args...)
 }
 
 // Error prints a red error message prefixed with a cross.
-func Error(w io.Writer, format string, args ...any) {
-	printColored(w, redColor, errorSymbol, format, args...)
+func Error(w io.Writer, format string, args ...any) error {
+	return printColored(w, redColor, errorSymbol, format, args...)
 }
 
-func printColored(w io.Writer, colorCode, symbol, format string, args ...any) {
+func printColored(w io.Writer, colorCode, symbol, format string, args ...any) error {
 	out := writerOrDefault(w, os.Stdout)
 	message := format
 	if len(args) > 0 {
@@ -51,11 +51,12 @@ func printColored(w io.Writer, colorCode, symbol, format string, args ...any) {
 	}
 
 	if supportsColor(out) {
-		_, _ = fmt.Fprintf(out, "%s%s %s%s\n", colorCode, symbol, message, resetColor)
-		return
+		_, err := fmt.Fprintf(out, "%s%s %s%s\n", colorCode, symbol, message, resetColor)
+		return err
 	}
 
-	_, _ = fmt.Fprintf(out, "%s %s\n", symbol, message)
+	_, err := fmt.Fprintf(out, "%s %s\n", symbol, message)
+	return err
 }
 
 func writerOrDefault(w io.Writer, fallback io.Writer) io.Writer {

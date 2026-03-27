@@ -240,7 +240,9 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, checkout)
 	}
 
-	message.Success(appCtx.StatusOutput, "Checkout created")
+	if err := message.Success(appCtx.StatusOutput, "Checkout created"); err != nil {
+		return err
+	}
 	details := make([]attribute.KeyValue, 0, 5)
 	if checkout.ID != nil {
 		details = append(details, attribute.ID(*checkout.ID))
@@ -274,7 +276,9 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, checkout)
 	}
 
-	message.Success(appCtx.StatusOutput, "Checkout deactivated")
+	if err := message.Success(appCtx.StatusOutput, "Checkout deactivated"); err != nil {
+		return err
+	}
 	details := make([]attribute.KeyValue, 0, 4)
 	if checkout.ID != nil {
 		details = append(details, attribute.ID(*checkout.ID))
@@ -405,12 +409,16 @@ func processCheckout(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if response.CheckoutSuccess != nil {
-		message.Success(appCtx.StatusOutput, "Checkout processed")
+		if err := message.Success(appCtx.StatusOutput, "Checkout processed"); err != nil {
+			return err
+		}
 		return renderCheckout(appCtx, response.CheckoutSuccess)
 	}
 
 	if response.CheckoutAccepted != nil {
-		message.Success(appCtx.StatusOutput, "Checkout accepted")
+		if err := message.Success(appCtx.StatusOutput, "Checkout accepted"); err != nil {
+			return err
+		}
 		if response.CheckoutAccepted.NextStep != nil {
 			return display.DataList(appCtx.Output, []attribute.KeyValue{
 				attribute.OptionalString("Method", response.CheckoutAccepted.NextStep.Method),
