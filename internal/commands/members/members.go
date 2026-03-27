@@ -268,15 +268,12 @@ func createMember(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("create member: %w", err)
 	}
 
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, response)
-	}
-
-	if err := message.Success(appCtx.StatusOutput, "Member created"); err != nil {
-		return err
-	}
-	return display.DataList(appCtx.Output, []attribute.KeyValue{
-		attribute.ID(response.ID),
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      response,
+		SuccessMessage: "Member created",
+		Details: []attribute.KeyValue{
+			attribute.ID(response.ID),
+		},
 	})
 }
 
@@ -301,15 +298,12 @@ func inviteMember(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("invite member: %w", err)
 	}
 
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, response)
-	}
-
-	if err := message.Success(appCtx.StatusOutput, "Member invited"); err != nil {
-		return err
-	}
-	return display.DataList(appCtx.Output, []attribute.KeyValue{
-		attribute.ID(response.ID),
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      response,
+		SuccessMessage: "Member invited",
+		Details: []attribute.KeyValue{
+			attribute.ID(response.ID),
+		},
 	})
 }
 

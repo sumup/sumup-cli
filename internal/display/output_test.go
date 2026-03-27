@@ -2,6 +2,8 @@ package display_test
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"regexp"
 	"strings"
 	"testing"
@@ -64,6 +66,73 @@ func TestDetailsBuilder(t *testing.T) {
 	})
 }
 
+func TestRenderMutation(t *testing.T) {
+	t.Run("renders json output when requested", func(t *testing.T) {
+		var out bytes.Buffer
+		var status bytes.Buffer
+
+		err := display.RenderMutation(&out, &status, true, display.MutationResult{
+			JSONValue:      map[string]string{"status": "ok"},
+			SuccessMessage: "Created",
+			Details: []attribute.KeyValue{
+				attribute.Attribute("Status", attribute.Styled("ok")),
+			},
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, normalizeOutput("{\n  \"status\": \"ok\"\n}\n"), normalizeOutput(out.String()))
+		assert.Empty(t, status.String())
+	})
+
+	t.Run("renders success message and details in human mode", func(t *testing.T) {
+		var out bytes.Buffer
+		var status bytes.Buffer
+
+		err := display.RenderMutation(&out, &status, false, display.MutationResult{
+			SuccessMessage: "Created",
+			Details: []attribute.KeyValue{
+				attribute.Attribute("Status", attribute.Styled("ok")),
+			},
+		})
+
+		require.NoError(t, err)
+		assert.Contains(t, normalizeOutput(status.String()), "Created")
+		assert.Equal(t, normalizeOutput("Status: ok\n"), normalizeOutput(out.String()))
+	})
+
+	t.Run("prefers custom human renderer when provided", func(t *testing.T) {
+		var out bytes.Buffer
+		var status bytes.Buffer
+
+		err := display.RenderMutation(&out, &status, false, display.MutationResult{
+			SuccessMessage: "Updated",
+			Details: []attribute.KeyValue{
+				attribute.Attribute("Status", attribute.Styled("stale")),
+			},
+			RenderHuman: func(w io.Writer) error {
+				_, writeErr := w.Write([]byte("custom\n"))
+				return writeErr
+			},
+		})
+
+		require.NoError(t, err)
+		assert.Contains(t, normalizeOutput(status.String()), "Updated")
+		assert.Equal(t, "custom\n", out.String())
+	})
+
+	t.Run("returns status writer errors", func(t *testing.T) {
+		out := &bytes.Buffer{}
+		status := failWriter{}
+
+		err := display.RenderMutation(out, status, false, display.MutationResult{
+			SuccessMessage: "Created",
+		})
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, errWriteFailed)
+	})
+}
+
 func TestRenderTable(t *testing.T) {
 	t.Run("renders title and row content", func(t *testing.T) {
 		var out bytes.Buffer
@@ -107,6 +176,14 @@ func TestRenderTableWithOptions(t *testing.T) {
 }
 
 var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+var errWriteFailed = errors.New("write failed")
+
+type failWriter struct{}
+
+func (failWriter) Write(_ []byte) (int, error) {
+	return 0, errWriteFailed
+}
 
 func normalizeOutput(value string) string {
 	value = ansiPattern.ReplaceAllString(value, "")

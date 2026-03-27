@@ -259,19 +259,16 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 		return formatCreateReaderError(err)
 	}
 
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, reader)
-	}
-
-	if err := message.Success(appCtx.StatusOutput, "Reader created"); err != nil {
-		return err
-	}
-	return display.DataList(appCtx.Output, []attribute.KeyValue{
-		attribute.ID(string(reader.ID)),
-		attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
-		attribute.Attribute("Status", attribute.Styled(string(reader.Status))),
-		attribute.Attribute("Model", attribute.Styled(string(reader.Device.Model))),
-		attribute.Attribute("Identifier", attribute.Styled(reader.Device.Identifier)),
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      reader,
+		SuccessMessage: "Reader created",
+		Details: []attribute.KeyValue{
+			attribute.ID(string(reader.ID)),
+			attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
+			attribute.Attribute("Status", attribute.Styled(string(reader.Status))),
+			attribute.Attribute("Model", attribute.Styled(string(reader.Device.Model))),
+			attribute.Attribute("Identifier", attribute.Styled(reader.Device.Identifier)),
+		},
 	})
 }
 
@@ -301,11 +298,10 @@ func deleteReader(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("delete reader: %w", err)
 	}
 
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, map[string]string{"status": "deleted"})
-	}
-
-	return message.Success(appCtx.StatusOutput, "Reader deleted")
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      map[string]string{"status": "deleted"},
+		SuccessMessage: "Reader deleted",
+	})
 }
 
 func readerCheckout(ctx context.Context, cmd *cli.Command) error {

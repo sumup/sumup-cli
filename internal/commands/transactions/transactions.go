@@ -15,7 +15,6 @@ import (
 	"github.com/sumup/sumup-cli/internal/currency"
 	"github.com/sumup/sumup-cli/internal/display"
 	"github.com/sumup/sumup-cli/internal/display/attribute"
-	"github.com/sumup/sumup-cli/internal/display/message"
 )
 
 func NewCommand() *cli.Command {
@@ -243,11 +242,10 @@ func renderTransactionDetails(appCtx *app.Context, transaction *sumup.Transactio
 }
 
 func renderRefundResult(appCtx *app.Context) error {
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, map[string]string{"status": "refunded"})
-	}
-
-	return message.Success(appCtx.StatusOutput, "Transaction refunded")
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      map[string]string{"status": "refunded"},
+		SuccessMessage: "Transaction refunded",
+	})
 }
 
 func transactionCardLabel(card *sumup.CardResponse) string {

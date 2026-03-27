@@ -235,13 +235,6 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("create checkout: %w", err)
 	}
 
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, checkout)
-	}
-
-	if err := message.Success(appCtx.StatusOutput, "Checkout created"); err != nil {
-		return err
-	}
 	details := display.NewDetailsBuilder()
 	if checkout.ID != nil {
 		details.AddID(*checkout.ID)
@@ -252,7 +245,11 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		details.Add("Status", attribute.Styled(string(*checkout.Status)))
 	}
 	details.AddWhen(checkout.Description != nil && *checkout.Description != "", attribute.Attribute("Description", attribute.Styled(*checkout.Description)))
-	return details.Render(appCtx.Output)
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      checkout,
+		SuccessMessage: "Checkout created",
+		Details:        details.Pairs(),
+	})
 }
 
 func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -269,13 +266,6 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("deactivate checkout: %w", err)
 	}
 
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, checkout)
-	}
-
-	if err := message.Success(appCtx.StatusOutput, "Checkout deactivated"); err != nil {
-		return err
-	}
 	details := display.NewDetailsBuilder()
 	if checkout.ID != nil {
 		details.AddID(*checkout.ID)
@@ -289,7 +279,11 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 			details.Add("Valid Until", attribute.Styled(util.TimeOrDash(appCtx, validUntil)))
 		}
 	}
-	return details.Render(appCtx.Output)
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      checkout,
+		SuccessMessage: "Checkout deactivated",
+		Details:        details.Pairs(),
+	})
 }
 
 func getCheckout(ctx context.Context, cmd *cli.Command) error {
