@@ -83,6 +83,20 @@ func TestBoolLabel(t *testing.T) {
 	})
 }
 
+func TestSliceOrEmpty(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns empty slice for nil pointer", func(t *testing.T) {
+		var values *[]string
+		assert.Empty(t, util.SliceOrEmpty(values))
+	})
+
+	t.Run("returns dereferenced slice when present", func(t *testing.T) {
+		values := []string{"a", "b"}
+		assert.Equal(t, values, util.SliceOrEmpty(&values))
+	})
+}
+
 func TestTimeOrDash(t *testing.T) {
 	t.Parallel()
 

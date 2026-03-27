@@ -58,3 +58,10 @@ func BoolLabel(value *bool) string {
 	}
 	return "No"
 }
+
+func SliceOrEmpty[S ~[]E, E any](value *S) S {
+	if value == nil {
+		return S{}
+	}
+	return *value
+}

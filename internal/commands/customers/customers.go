@@ -222,8 +222,9 @@ func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, instruments)
 	}
 
-	rows := make([][]attribute.Value, 0, len(*instruments))
-	for _, instrument := range *instruments {
+	paymentInstruments := util.SliceOrEmpty(instruments)
+	rows := make([][]attribute.Value, 0, len(paymentInstruments))
+	for _, instrument := range paymentInstruments {
 		rows = append(rows, []attribute.Value{
 			attribute.OptionalStringValue(instrument.Token),
 			attribute.OptionalValue(instrument.Type),
