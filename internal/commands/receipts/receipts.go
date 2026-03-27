@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/urfave/cli/v3"
 
@@ -75,10 +74,10 @@ func getReceipt(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, receipt)
 	}
 
-	return renderReceipt(appCtx.Output, receipt)
+	return renderReceipt(appCtx, appCtx.Output, receipt)
 }
 
-func renderReceipt(w io.Writer, receipt *sumup.Receipt) error {
+func renderReceipt(appCtx *app.Context, w io.Writer, receipt *sumup.Receipt) error {
 	sections := make([]display.Section, 0, 4)
 
 	if transaction := receipt.TransactionData; transaction != nil {
@@ -89,7 +88,7 @@ func renderReceipt(w io.Writer, receipt *sumup.Receipt) error {
 				attribute.OptionalString("Status", transaction.Status),
 				attribute.OptionalString("Payment Type", transaction.PaymentType),
 				attribute.Attribute("Amount", attribute.Styled(receiptAmount(transaction))),
-				attribute.Attribute("Timestamp", attribute.Styled(timePointerToString(transaction.Timestamp))),
+				attribute.Attribute("Timestamp", attribute.Styled(util.TimeOrDash(appCtx, transaction.Timestamp))),
 				attribute.OptionalString("Entry Mode", transaction.EntryMode),
 				attribute.OptionalString("Verification", transaction.VerificationMethod),
 				attribute.Attribute("Card", attribute.Styled(receiptCard(transaction))),
@@ -203,11 +202,4 @@ func enumValue[T ~string](value *T) string {
 		return "-"
 	}
 	return string(*value)
-}
-
-func timePointerToString(value *time.Time) string {
-	if value == nil {
-		return "-"
-	}
-	return value.UTC().Format(time.RFC3339)
 }
