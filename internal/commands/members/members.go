@@ -419,8 +419,7 @@ func deleteMember(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("delete member: %w", err)
 	}
 
-	message.Success(appCtx.StatusOutput, "Member deleted")
-	return nil
+	return renderDeleteMemberResult(appCtx)
 }
 
 func parseMembershipStatus(value string) (sumup.MembershipStatus, error) {
@@ -492,6 +491,15 @@ func renderMember(w io.Writer, member *sumup.Member) error {
 	}
 
 	return display.DataList(w, details)
+}
+
+func renderDeleteMemberResult(appCtx *app.Context) error {
+	if appCtx.JSONOutput {
+		return display.PrintJSON(appCtx.Output, map[string]string{"status": "deleted"})
+	}
+
+	message.Success(appCtx.StatusOutput, "Member deleted")
+	return nil
 }
 
 func memberNickname(member *sumup.Member) string {
