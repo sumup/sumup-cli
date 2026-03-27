@@ -55,6 +55,17 @@ func TestGetMerchantCode(t *testing.T) {
 		assert.Empty(t, got)
 		assert.ErrorContains(t, err, "merchant code is required")
 	})
+
+	t.Run("rejects explicitly empty merchant-code flag", func(t *testing.T) {
+		tempDir := t.TempDir()
+		t.Setenv("XDG_CONFIG_HOME", tempDir)
+		t.Setenv("HOME", tempDir)
+
+		got, err := runGetMerchantCode(t, []string{"sumup", "--merchant-code", ""}, nil)
+		require.Error(t, err)
+		assert.Empty(t, got)
+		assert.ErrorContains(t, err, "merchant code is required")
+	})
 }
 
 func TestNewContext(t *testing.T) {
