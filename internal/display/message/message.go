@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
-	"golang.org/x/term"
+	"github.com/sumup/sumup-cli/internal/outpututil"
 )
 
 const (
@@ -45,46 +44,15 @@ func Error(w io.Writer, format string, args ...any) error {
 }
 
 func printColored(w io.Writer, colorCode, symbol, format string, args ...any) error {
-	out := writerOrDefault(w, os.Stdout)
+	out := outpututil.WriterOrDefault(w, os.Stdout)
 	message := format
 	if len(args) > 0 {
 		message = fmt.Sprintf(format, args...)
 	}
 
-	if supportsColor(out) {
-		_, err := fmt.Fprintf(out, "%s%s %s%s\n", colorCode, symbol, message, resetColor)
-		return err
+	if outpututil.SupportsColor(out) {
+		return outpututil.Fprintf(out, os.Stdout, "%s%s %s%s\n", colorCode, symbol, message, resetColor)
 	}
 
-	_, err := fmt.Fprintf(out, "%s %s\n", symbol, message)
-	return err
-}
-
-func writerOrDefault(w io.Writer, fallback io.Writer) io.Writer {
-	if w == nil {
-		return fallback
-	}
-	return w
-}
-
-func supportsColor(w io.Writer) bool {
-	file, ok := w.(*os.File)
-	if !ok {
-		return false
-	}
-
-	return shouldUseColor(term.IsTerminal(int(file.Fd())), os.Getenv("TERM"), os.Getenv("NO_COLOR"))
-}
-
-func shouldUseColor(isTerminal bool, termEnv, noColorEnv string) bool {
-	if !isTerminal {
-		return false
-	}
-	if strings.TrimSpace(noColorEnv) != "" {
-		return false
-	}
-	if strings.EqualFold(strings.TrimSpace(termEnv), "dumb") {
-		return false
-	}
-	return true
+	return outpututil.Fprintf(out, os.Stdout, "%s %s\n", symbol, message)
 }

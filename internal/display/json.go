@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/sumup/sumup-cli/internal/outpututil"
 )
 
 // PrintJSON renders the value as pretty JSON.
@@ -17,18 +19,13 @@ func PrintJSON(w io.Writer, v any) error {
 }
 
 func writerOrStdout(w io.Writer) io.Writer {
-	if w == nil {
-		return os.Stdout
-	}
-	return w
+	return outpututil.WriterOrDefault(w, os.Stdout)
 }
 
 func writeln(w io.Writer, args ...any) error {
-	_, err := fmt.Fprintln(writerOrStdout(w), args...)
-	return err
+	return outpututil.Fprintln(w, os.Stdout, args...)
 }
 
 func writef(w io.Writer, format string, args ...any) error {
-	_, err := fmt.Fprintf(writerOrStdout(w), format, args...)
-	return err
+	return outpututil.Fprintf(w, os.Stdout, format, args...)
 }
