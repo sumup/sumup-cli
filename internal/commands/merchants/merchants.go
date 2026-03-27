@@ -2,17 +2,22 @@ package merchants
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/urfave/cli/v3"
 
+	sumup "github.com/sumup/sumup-go"
+
 	"github.com/sumup/sumup-cli/internal/app"
-	"github.com/sumup/sumup-cli/internal/display/message"
+	"github.com/sumup/sumup-cli/internal/commands/util"
+	"github.com/sumup/sumup-cli/internal/display"
+	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
 
 func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "merchants",
-		Usage: "Placeholder for the merchants API resource.",
+		Usage: "Commands related to merchant accounts.",
 		Commands: []*cli.Command{
 			{
 				Name:   "get",
@@ -30,7 +35,7 @@ func NewCommand() *cli.Command {
 	}
 }
 
-func getMerchant(_ context.Context, cmd *cli.Command) error {
+func getMerchant(ctx context.Context, cmd *cli.Command) error {
 	appCtx, err := app.GetAppContext(cmd)
 	if err != nil {
 		return err
@@ -40,7 +45,45 @@ func getMerchant(_ context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	message.Notify(appCtx.Output, "Getting merchant information for: %s", merchantCode)
-	message.Warn(appCtx.Output, "Merchants functionality not yet fully implemented.")
+
+	merchant, err := appCtx.Client.Merchants.Get(ctx, merchantCode, sumup.MerchantsGetParams{})
+	if err != nil {
+		return fmt.Errorf("get merchant: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(appCtx.Output, merchant)
+	}
+
+	renderMerchant(appCtx, merchant)
 	return nil
+}
+
+func renderMerchant(appCtx *app.Context, merchant *sumup.Merchant) {
+	if merchant == nil {
+		return
+	}
+
+	details := []attribute.KeyValue{
+		attribute.Attribute("Merchant Code", attribute.Styled(merchant.MerchantCode)),
+		attribute.OptionalString("Alias", merchant.Alias),
+		attribute.Attribute("Country", attribute.Styled(merchant.Country)),
+		attribute.Attribute("Default Currency", attribute.Styled(merchant.DefaultCurrency)),
+		attribute.Attribute("Default Locale", attribute.Styled(merchant.DefaultLocale)),
+		attribute.Attribute("Sandbox", attribute.Styled(util.BoolLabel(merchant.Sandbox))),
+		attribute.OptionalString("Organization ID", merchant.OrganizationID),
+		attribute.Attribute("Created At", attribute.Styled(util.TimeOrDash(appCtx, &merchant.CreatedAt))),
+		attribute.Attribute("Updated At", attribute.Styled(util.TimeOrDash(appCtx, &merchant.UpdatedAt))),
+	}
+
+	if merchant.BusinessProfile != nil {
+		details = append(details,
+			attribute.OptionalString("Business Name", merchant.BusinessProfile.Name),
+			attribute.OptionalString("Business Email", merchant.BusinessProfile.Email),
+			attribute.Optional("Business Phone", merchant.BusinessProfile.PhoneNumber),
+			attribute.OptionalString("Business Website", merchant.BusinessProfile.Website),
+		)
+	}
+
+	display.DataList(appCtx.Output, details)
 }
