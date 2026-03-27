@@ -243,19 +243,17 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 	if err := message.Success(appCtx.StatusOutput, "Checkout created"); err != nil {
 		return err
 	}
-	details := make([]attribute.KeyValue, 0, 5)
+	details := display.NewDetailsBuilder()
 	if checkout.ID != nil {
-		details = append(details, attribute.ID(*checkout.ID))
+		details.AddID(*checkout.ID)
 	}
-	details = append(details, attribute.Attribute("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "N/A"))))
-	details = append(details, attribute.Attribute("Amount", attribute.Styled(currency.FormatPointers(checkout.Amount, checkout.Currency))))
+	details.Add("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "N/A")))
+	details.Add("Amount", attribute.Styled(currency.FormatPointers(checkout.Amount, checkout.Currency)))
 	if checkout.Status != nil {
-		details = append(details, attribute.Attribute("Status", attribute.Styled(string(*checkout.Status))))
+		details.Add("Status", attribute.Styled(string(*checkout.Status)))
 	}
-	if checkout.Description != nil && *checkout.Description != "" {
-		details = append(details, attribute.Attribute("Description", attribute.Styled(*checkout.Description)))
-	}
-	return display.DataList(appCtx.Output, details)
+	details.AddWhen(checkout.Description != nil && *checkout.Description != "", attribute.Attribute("Description", attribute.Styled(*checkout.Description)))
+	return details.Render(appCtx.Output)
 }
 
 func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -279,20 +277,20 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 	if err := message.Success(appCtx.StatusOutput, "Checkout deactivated"); err != nil {
 		return err
 	}
-	details := make([]attribute.KeyValue, 0, 4)
+	details := display.NewDetailsBuilder()
 	if checkout.ID != nil {
-		details = append(details, attribute.ID(*checkout.ID))
+		details.AddID(*checkout.ID)
 	}
-	details = append(details, attribute.Attribute("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "N/A"))))
+	details.Add("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "N/A")))
 	if checkout.Status != nil {
-		details = append(details, attribute.Attribute("Status", attribute.Styled(string(*checkout.Status))))
+		details.Add("Status", attribute.Styled(string(*checkout.Status)))
 	}
 	if checkout.ValidUntil != nil {
 		if validUntil := checkout.ValidUntil.Value(); validUntil != nil {
-			details = append(details, attribute.Attribute("Valid Until", attribute.Styled(util.TimeOrDash(appCtx, validUntil))))
+			details.Add("Valid Until", attribute.Styled(util.TimeOrDash(appCtx, validUntil)))
 		}
 	}
-	return display.DataList(appCtx.Output, details)
+	return details.Render(appCtx.Output)
 }
 
 func getCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -435,22 +433,21 @@ func renderCheckout(appCtx *app.Context, checkout *sumup.CheckoutSuccess) error 
 		return nil
 	}
 
-	details := []attribute.KeyValue{}
+	details := display.NewDetailsBuilder()
 	if checkout.ID != nil {
-		details = append(details, attribute.ID(*checkout.ID))
+		details.AddID(*checkout.ID)
 	}
-	details = append(details,
-		attribute.Attribute("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "-"))),
-		attribute.Attribute("Amount", attribute.Styled(currency.FormatPointers(checkout.Amount, checkout.Currency))),
-		attribute.OptionalString("Merchant", checkout.MerchantCode),
-		attribute.OptionalString("Merchant Name", checkout.MerchantName),
-		attribute.OptionalString("Description", checkout.Description),
-		attribute.OptionalString("Status", enumString(checkout.Status)),
-		attribute.OptionalString("Transaction ID", checkout.TransactionID),
-		attribute.OptionalString("Transaction Code", checkout.TransactionCode),
-		attribute.Attribute("Created At", attribute.Styled(util.TimeOrDash(appCtx, checkout.Date))),
-	)
-	return display.DataList(appCtx.Output, details)
+	details.
+		Add("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "-"))).
+		Add("Amount", attribute.Styled(currency.FormatPointers(checkout.Amount, checkout.Currency))).
+		AddOptionalString("Merchant", checkout.MerchantCode).
+		AddOptionalString("Merchant Name", checkout.MerchantName).
+		AddOptionalString("Description", checkout.Description).
+		AddOptionalString("Status", enumString(checkout.Status)).
+		AddOptionalString("Transaction ID", checkout.TransactionID).
+		AddOptionalString("Transaction Code", checkout.TransactionCode).
+		Add("Created At", attribute.Styled(util.TimeOrDash(appCtx, checkout.Date)))
+	return details.Render(appCtx.Output)
 }
 
 func checkoutPersonalDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails, int, error) {

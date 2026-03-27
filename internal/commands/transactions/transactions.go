@@ -230,17 +230,17 @@ func renderTransactionDetails(appCtx *app.Context, transaction *sumup.Transactio
 		paymentType = string(*transaction.PaymentType)
 	}
 
-	return display.DataList(appCtx.Output, []attribute.KeyValue{
-		attribute.ID(util.StringOrDefault(transaction.ID, "-")),
-		attribute.Attribute("Status", attribute.Styled(status)),
-		attribute.OptionalString("Code", transaction.TransactionCode),
-		attribute.Attribute("Amount", attribute.Styled(currency.FormatPointers(transaction.Amount, transaction.Currency))),
-		attribute.OptionalString("Merchant", transaction.MerchantCode),
-		attribute.Attribute("Payment Type", attribute.Styled(paymentType)),
-		attribute.Attribute("Card", attribute.Styled(transactionCardLabel(transaction.Card))),
-		attribute.OptionalString("Description", transaction.ProductSummary),
-		attribute.Attribute("Created At", attribute.Styled(util.TimeOrDash(appCtx, transaction.Timestamp))),
-	})
+	return display.NewDetailsBuilder().
+		AddID(util.StringOrDefault(transaction.ID, "-")).
+		Add("Status", attribute.Styled(status)).
+		AddOptionalString("Code", transaction.TransactionCode).
+		Add("Amount", attribute.Styled(currency.FormatPointers(transaction.Amount, transaction.Currency))).
+		AddOptionalString("Merchant", transaction.MerchantCode).
+		Add("Payment Type", attribute.Styled(paymentType)).
+		Add("Card", attribute.Styled(transactionCardLabel(transaction.Card))).
+		AddOptionalString("Description", transaction.ProductSummary).
+		Add("Created At", attribute.Styled(util.TimeOrDash(appCtx, transaction.Timestamp))).
+		Render(appCtx.Output)
 }
 
 func renderRefundResult(appCtx *app.Context) error {

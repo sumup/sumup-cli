@@ -37,6 +37,33 @@ func TestDataList(t *testing.T) {
 	})
 }
 
+func TestDetailsBuilder(t *testing.T) {
+	t.Run("collects and renders details", func(t *testing.T) {
+		var out bytes.Buffer
+		empty := ""
+
+		builder := display.NewDetailsBuilder().
+			AddID("123").
+			Add("Status", attribute.Styled("ok")).
+			AddOptionalString("Reference", &empty).
+			AddWhen(true, attribute.Attribute("Mode", attribute.Styled("live")))
+
+		require.NoError(t, builder.Render(&out))
+		assert.Equal(t, normalizeOutput("ID: 123\nStatus: ok\nReference: -\nMode: live\n"), normalizeOutput(out.String()))
+	})
+
+	t.Run("returns a copy of pairs", func(t *testing.T) {
+		builder := display.NewDetailsBuilder().Add("Status", attribute.Styled("ok"))
+
+		pairs := builder.Pairs()
+		pairs[0] = attribute.Attribute("Status", attribute.Styled("changed"))
+
+		rendered := builder.Pairs()
+		require.Len(t, rendered, 1)
+		assert.Equal(t, "ok", rendered[0].Value.Text)
+	})
+}
+
 func TestRenderTable(t *testing.T) {
 	t.Run("renders title and row content", func(t *testing.T) {
 		var out bytes.Buffer
