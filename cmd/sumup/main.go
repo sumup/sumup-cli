@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	sumupclient "github.com/sumup/sumup-go/client"
@@ -58,7 +59,9 @@ func main() {
 	}
 
 	if err := cliApp.Run(context.Background(), os.Args); err != nil {
-		message.Error(os.Stderr, "%v", err)
+		if printErr := message.Error(os.Stderr, "%v", err); printErr != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
+		}
 		os.Exit(1)
 	}
 }

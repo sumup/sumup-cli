@@ -265,7 +265,9 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, reader)
 	}
 
-	message.Success(appCtx.StatusOutput, "Reader created")
+	if err := message.Success(appCtx.StatusOutput, "Reader created"); err != nil {
+		return err
+	}
 	return display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(string(reader.ID)),
 		attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
@@ -305,8 +307,7 @@ func deleteReader(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, map[string]string{"status": "deleted"})
 	}
 
-	message.Success(appCtx.StatusOutput, "Reader deleted")
-	return nil
+	return message.Success(appCtx.StatusOutput, "Reader deleted")
 }
 
 func readerCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -384,7 +385,9 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, response)
 	}
 
-	message.Success(appCtx.StatusOutput, "Checkout initiated")
+	if err := message.Success(appCtx.StatusOutput, "Checkout initiated"); err != nil {
+		return err
+	}
 	majorAmount := float64(value) / math.Pow10(cmd.Int("minor-unit"))
 	details := make([]attribute.KeyValue, 0, 2)
 	details = append(details, attribute.Attribute("Amount", attribute.Styled(currency.Format(majorAmount, parsedCurrency))))
@@ -493,7 +496,9 @@ func updateReader(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, reader)
 	}
 
-	message.Success(appCtx.StatusOutput, "Reader updated")
+	if err := message.Success(appCtx.StatusOutput, "Reader updated"); err != nil {
+		return err
+	}
 	return renderReader(appCtx.Output, reader)
 }
 
@@ -519,8 +524,7 @@ func terminateCheckout(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, map[string]string{"status": "termination_requested"})
 	}
 
-	message.Success(appCtx.StatusOutput, "Reader checkout termination requested")
-	return nil
+	return message.Success(appCtx.StatusOutput, "Reader checkout termination requested")
 }
 
 func renderReader(w io.Writer, reader *sumup.Reader) error {

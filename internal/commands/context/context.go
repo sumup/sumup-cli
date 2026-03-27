@@ -394,7 +394,9 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	message.Notify(appCtx.StatusOutput, "Fetching your sumup...")
+	if err := message.Notify(appCtx.StatusOutput, "Fetching your sumup..."); err != nil {
+		return err
+	}
 
 	status := sumup.MembershipStatusAccepted
 	params := sumup.MembershipsListParams{
@@ -407,8 +409,7 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if len(response.Items) == 0 {
-		message.Warn(appCtx.StatusOutput, "No memberships found.")
-		return nil
+		return message.Warn(appCtx.StatusOutput, "No memberships found.")
 	}
 
 	searchInput := textinput.New()
@@ -432,13 +433,11 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 
 	finalModel := result.(model)
 	if finalModel.selected == nil {
-		message.Warn(appCtx.StatusOutput, "No merchant selected.")
-		return nil
+		return message.Warn(appCtx.StatusOutput, "No merchant selected.")
 	}
 
 	if finalModel.selected.Resource.Type == "organization" {
-		message.Warn(appCtx.StatusOutput, "Please select a merchant, not an organization.")
-		return nil
+		return message.Warn(appCtx.StatusOutput, "Please select a merchant, not an organization.")
 	}
 
 	// Get merchant code
@@ -451,8 +450,7 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("save merchant context: %w", err)
 	}
 
-	message.Success(appCtx.StatusOutput, "Merchant context set to: %s (%s)", finalModel.selected.Resource.Name, merchantCode)
-	return nil
+	return message.Success(appCtx.StatusOutput, "Merchant context set to: %s (%s)", finalModel.selected.Resource.Name, merchantCode)
 }
 
 func getContext(_ context.Context, cmd *cli.Command) error {
@@ -467,13 +465,13 @@ func getContext(_ context.Context, cmd *cli.Command) error {
 	}
 
 	if merchantCode == "" {
-		message.Notify(appCtx.StatusOutput, "No merchant context set.")
-		message.Notify(appCtx.StatusOutput, "Use 'sumup context set' to set a merchant context.")
-		return nil
+		if err := message.Notify(appCtx.StatusOutput, "No merchant context set."); err != nil {
+			return err
+		}
+		return message.Notify(appCtx.StatusOutput, "Use 'sumup context set' to set a merchant context.")
 	}
 
-	message.Notify(appCtx.StatusOutput, "Current merchant context: %s", merchantCode)
-	return nil
+	return message.Notify(appCtx.StatusOutput, "Current merchant context: %s", merchantCode)
 }
 
 func unsetContext(_ context.Context, cmd *cli.Command) error {
@@ -486,6 +484,5 @@ func unsetContext(_ context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("unset merchant context: %w", err)
 	}
 
-	message.Success(appCtx.StatusOutput, "Merchant context unset.")
-	return nil
+	return message.Success(appCtx.StatusOutput, "Merchant context unset.")
 }
