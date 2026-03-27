@@ -63,6 +63,22 @@ func TestRenderTableWithOptionsSupportsEmptyTextWithoutTitle(t *testing.T) {
 	})
 }
 
+func TestRenderTableWithOptions(t *testing.T) {
+	t.Run("styles identifier columns explicitly instead of inferring from headers", func(t *testing.T) {
+		var out bytes.Buffer
+
+		err := display.RenderTableWithOptions(&out, []string{"Token"}, [][]attribute.Value{
+			{attribute.ValueOf("tok_123")},
+		}, display.TableOptions{
+			Title:             "Tokens",
+			IdentifierColumns: []int{0},
+		})
+
+		require.NoError(t, err)
+		assert.Equal(t, normalizeOutput("Tokens\nToken\ntok_123"), normalizeOutput(out.String()))
+	})
+}
+
 var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
 func normalizeOutput(value string) string {

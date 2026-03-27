@@ -233,12 +233,11 @@ func listReaders(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	return display.RenderTable(
-		appCtx.Output,
-		"Readers",
-		[]string{"ID", "Name", "Status", "Model", "Identifier"},
-		rows,
-	)
+	return display.RenderTableWithOptions(appCtx.Output, []string{"ID", "Name", "Status", "Model", "Identifier"}, rows, display.TableOptions{
+		Title:             "Readers",
+		EmptyText:         "No items to display",
+		IdentifierColumns: []int{0},
+	})
 }
 
 func addReader(ctx context.Context, cmd *cli.Command) error {

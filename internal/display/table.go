@@ -15,17 +15,16 @@ const fallbackWidth = 120
 
 // TableOptions customizes human-readable table rendering.
 type TableOptions struct {
-	Title              string
-	EmptyText          string
-	HighlightIDColumns bool
+	Title             string
+	EmptyText         string
+	IdentifierColumns []int
 }
 
 // RenderTable prints rows in a table using the terminal width to wrap columns.
 func RenderTable(w io.Writer, title string, headers []string, rows [][]attribute.Value) error {
 	return RenderTableWithOptions(w, headers, rows, TableOptions{
-		Title:              title,
-		EmptyText:          "No items to display",
-		HighlightIDColumns: true,
+		Title:     title,
+		EmptyText: "No items to display",
 	})
 }
 
@@ -49,12 +48,10 @@ func RenderTableWithOptions(w io.Writer, headers []string, rows [][]attribute.Va
 	idStyle := basePadding.Foreground(SumUpPink).Bold(true)
 	defaultStyle := basePadding
 
-	idColumns := make([]bool, len(headers))
-	if opts.HighlightIDColumns {
-		for i, header := range headers {
-			if isIDHeader(header) {
-				idColumns[i] = true
-			}
+	identifierColumns := make(map[int]struct{}, len(opts.IdentifierColumns))
+	for _, idx := range opts.IdentifierColumns {
+		if idx >= 0 && idx < len(headers) {
+			identifierColumns[idx] = struct{}{}
 		}
 	}
 
@@ -87,7 +84,7 @@ func RenderTableWithOptions(w io.Writer, headers []string, rows [][]attribute.Va
 			if rowIndex := row - 1; rowIndex >= 0 && rowIndex < len(rows) && col >= 0 && col < len(rows[rowIndex]) {
 				style = style.Inherit(rows[rowIndex][col].Style)
 			}
-			if col >= 0 && col < len(idColumns) && idColumns[col] {
+			if _, ok := identifierColumns[col]; ok {
 				style = style.Inherit(idStyle)
 			}
 			return style
@@ -103,8 +100,4 @@ func RenderTableWithOptions(w io.Writer, headers []string, rows [][]attribute.Va
 		return err
 	}
 	return nil
-}
-
-func isIDHeader(header string) bool {
-	return strings.EqualFold(strings.TrimSpace(header), "id")
 }

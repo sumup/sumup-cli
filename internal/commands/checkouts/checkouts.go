@@ -179,12 +179,11 @@ func listCheckouts(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	return display.RenderTable(
-		appCtx.Output,
-		"Checkouts",
-		[]string{"ID", "Reference", "Amount", "Status", "Merchant", "Created At"},
-		rows,
-	)
+	return display.RenderTableWithOptions(appCtx.Output, []string{"ID", "Reference", "Amount", "Status", "Merchant", "Created At"}, rows, display.TableOptions{
+		Title:             "Checkouts",
+		EmptyText:         "No items to display",
+		IdentifierColumns: []int{0},
+	})
 }
 
 func createCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -364,9 +363,9 @@ func listPaymentMethods(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return display.RenderTableWithOptions(appCtx.Output, []string{"ID"}, rows, display.TableOptions{
-		Title:              "Checkout Payment Methods",
-		EmptyText:          "No payment methods available",
-		HighlightIDColumns: true,
+		Title:             "Checkout Payment Methods",
+		EmptyText:         "No payment methods available",
+		IdentifierColumns: []int{0},
 	})
 }
 
