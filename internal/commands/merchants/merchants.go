@@ -31,11 +31,16 @@ func NewCommand() *cli.Command {
 }
 
 func getMerchant(_ context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+
 	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
 	if err != nil {
 		return err
 	}
-	message.Notify("Getting merchant information for: %s", merchantCode)
-	message.Warn("Merchants functionality not yet fully implemented.")
+	message.Notify(appCtx.Output, "Getting merchant information for: %s", merchantCode)
+	message.Warn(appCtx.Output, "Merchants functionality not yet fully implemented.")
 	return nil
 }

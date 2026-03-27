@@ -141,7 +141,7 @@ func createCustomer(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, customer)
 	}
 
-	message.Success("Customer created")
+	message.Success(appCtx.Output, "Customer created")
 	renderCustomer(appCtx.Output, customer)
 	return nil
 }
@@ -201,7 +201,7 @@ func updateCustomer(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, customer)
 	}
 
-	message.Success("Customer updated")
+	message.Success(appCtx.Output, "Customer updated")
 	renderCustomer(appCtx.Output, customer)
 	return nil
 }
@@ -264,7 +264,7 @@ func deactivatePaymentInstrument(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, map[string]string{"status": "deactivated"})
 	}
 
-	message.Success("Payment instrument deactivated")
+	message.Success(appCtx.Output, "Payment instrument deactivated")
 	return nil
 }
 

@@ -394,7 +394,7 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	message.Notify("Fetching your sumup...")
+	message.Notify(appCtx.Output, "Fetching your sumup...")
 
 	status := sumup.MembershipStatusAccepted
 	params := sumup.MembershipsListParams{
@@ -407,7 +407,7 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if len(response.Items) == 0 {
-		message.Warn("No memberships found.")
+		message.Warn(appCtx.Output, "No memberships found.")
 		return nil
 	}
 
@@ -432,12 +432,12 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 
 	finalModel := result.(model)
 	if finalModel.selected == nil {
-		message.Warn("No merchant selected.")
+		message.Warn(appCtx.Output, "No merchant selected.")
 		return nil
 	}
 
 	if finalModel.selected.Resource.Type == "organization" {
-		message.Warn("Please select a merchant, not an organization.")
+		message.Warn(appCtx.Output, "Please select a merchant, not an organization.")
 		return nil
 	}
 
@@ -451,31 +451,41 @@ func setContext(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("save merchant context: %w", err)
 	}
 
-	message.Success("Merchant context set to: %s (%s)", finalModel.selected.Resource.Name, merchantCode)
+	message.Success(appCtx.Output, "Merchant context set to: %s (%s)", finalModel.selected.Resource.Name, merchantCode)
 	return nil
 }
 
-func getContext(_ context.Context, _ *cli.Command) error {
+func getContext(_ context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+
 	merchantCode, err := config.GetCurrentMerchantCode()
 	if err != nil {
 		return fmt.Errorf("get merchant context: %w", err)
 	}
 
 	if merchantCode == "" {
-		message.Notify("No merchant context set.")
-		message.Notify("Use 'sumup context set' to set a merchant context.")
+		message.Notify(appCtx.Output, "No merchant context set.")
+		message.Notify(appCtx.Output, "Use 'sumup context set' to set a merchant context.")
 		return nil
 	}
 
-	message.Notify("Current merchant context: %s", merchantCode)
+	message.Notify(appCtx.Output, "Current merchant context: %s", merchantCode)
 	return nil
 }
 
-func unsetContext(_ context.Context, _ *cli.Command) error {
+func unsetContext(_ context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+
 	if err := config.SetCurrentMerchantCode(""); err != nil {
 		return fmt.Errorf("unset merchant context: %w", err)
 	}
 
-	message.Success("Merchant context unset.")
+	message.Success(appCtx.Output, "Merchant context unset.")
 	return nil
 }

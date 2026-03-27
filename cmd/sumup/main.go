@@ -58,7 +58,7 @@ func main() {
 	}
 
 	if err := cliApp.Run(context.Background(), os.Args); err != nil {
-		message.Error("%v", err)
+		message.Error(os.Stderr, "%v", err)
 		os.Exit(1)
 	}
 }
