@@ -27,7 +27,7 @@ func NewCommand() *cli.Command {
 			}
 
 			_, err = fmt.Fprintln(appCtx.Output, buildinfo.Long())
-			return nil
+			return err
 		},
 	}
 }
