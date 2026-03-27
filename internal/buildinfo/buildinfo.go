@@ -15,6 +15,14 @@ var (
 	Date = "unknown"
 )
 
+// Details describes the current CLI build metadata.
+type Details struct {
+	Version string `json:"version"`
+	Commit  string `json:"commit"`
+	Date    string `json:"date"`
+	Dirty   bool   `json:"dirty"`
+}
+
 func info() (version, commit, date string, dirty bool) {
 	version = Version
 	commit = Commit
@@ -47,20 +55,31 @@ func info() (version, commit, date string, dirty bool) {
 	return version, commit, date, dirty
 }
 
+// Current returns the current build metadata as a structured value.
+func Current() Details {
+	version, commit, date, dirty := info()
+	return Details{
+		Version: version,
+		Commit:  commit,
+		Date:    date,
+		Dirty:   dirty,
+	}
+}
+
 // Short returns a concise version string suitable for --version output.
 func Short() string {
-	version, commit, _, dirty := info()
+	current := Current()
 
 	var parts []string
-	parts = append(parts, version)
-	if commit != "" && commit != "unknown" {
-		shortCommit := commit
+	parts = append(parts, current.Version)
+	if current.Commit != "" && current.Commit != "unknown" {
+		shortCommit := current.Commit
 		if len(shortCommit) > 7 {
 			shortCommit = shortCommit[:7]
 		}
 		parts = append(parts, shortCommit)
 	}
-	if dirty {
+	if current.Dirty {
 		parts = append(parts, "dirty")
 	}
 
@@ -69,11 +88,11 @@ func Short() string {
 
 // Long returns full build details.
 func Long() string {
-	version, commit, date, _ := info()
+	current := Current()
 	return fmt.Sprintf(
 		"Version: %s\nCommit: %s\nDate: %s",
-		version,
-		commit,
-		date,
+		current.Version,
+		current.Commit,
+		current.Date,
 	)
 }
