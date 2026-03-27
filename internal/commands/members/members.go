@@ -275,7 +275,7 @@ func createMember(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, response)
 	}
 
-	message.Success(appCtx.Output, "Member created")
+	message.Success(appCtx.StatusOutput, "Member created")
 	display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(response.ID),
 	})
@@ -307,7 +307,7 @@ func inviteMember(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, response)
 	}
 
-	message.Success(appCtx.Output, "Member invited")
+	message.Success(appCtx.StatusOutput, "Member invited")
 	display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(response.ID),
 	})
@@ -400,7 +400,7 @@ func updateMember(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, member)
 	}
 
-	message.Success(appCtx.Output, "Member updated")
+	message.Success(appCtx.StatusOutput, "Member updated")
 	renderMember(appCtx.Output, member)
 	return nil
 }
@@ -424,7 +424,7 @@ func deleteMember(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("delete member: %w", err)
 	}
 
-	message.Success(appCtx.Output, "Member deleted")
+	message.Success(appCtx.StatusOutput, "Member deleted")
 	return nil
 }
 
