@@ -531,15 +531,15 @@ func renderReader(appCtx *app.Context, w io.Writer, reader *sumup.Reader) error 
 		return nil
 	}
 
-	return display.DataList(w, []attribute.KeyValue{
-		attribute.ID(string(reader.ID)),
-		attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
-		attribute.Attribute("Status", attribute.Styled(string(reader.Status))),
-		attribute.Attribute("Model", attribute.Styled(string(reader.Device.Model))),
-		attribute.Attribute("Identifier", attribute.Styled(reader.Device.Identifier)),
-		attribute.Attribute("Updated At", attribute.Styled(util.TimeOrDash(appCtx, &reader.UpdatedAt))),
-		attribute.OptionalString("Service Account ID", reader.ServiceAccountID),
-	})
+	return display.NewDetailsBuilder().
+		AddID(string(reader.ID)).
+		Add("Name", attribute.Styled(string(reader.Name))).
+		Add("Status", attribute.Styled(string(reader.Status))).
+		Add("Model", attribute.Styled(string(reader.Device.Model))).
+		Add("Identifier", attribute.Styled(reader.Device.Identifier)).
+		Add("Updated At", attribute.Styled(util.TimeOrDash(appCtx, &reader.UpdatedAt))).
+		AddOptionalString("Service Account ID", reader.ServiceAccountID).
+		Render(w)
 }
 
 func readerStatusBatteryLevel(v *float32) string {
