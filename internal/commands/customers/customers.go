@@ -137,14 +137,13 @@ func createCustomer(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("create customer: %w", err)
 	}
 
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, customer)
-	}
-
-	if err := message.Success(appCtx.StatusOutput, "Customer created"); err != nil {
-		return err
-	}
-	return renderCustomer(appCtx.Output, customer)
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      customer,
+		SuccessMessage: "Customer created",
+		RenderHuman: func(w io.Writer) error {
+			return renderCustomer(w, customer)
+		},
+	})
 }
 
 func getCustomer(ctx context.Context, cmd *cli.Command) error {
@@ -197,14 +196,13 @@ func updateCustomer(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("update customer: %w", err)
 	}
 
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, customer)
-	}
-
-	if err := message.Success(appCtx.StatusOutput, "Customer updated"); err != nil {
-		return err
-	}
-	return renderCustomer(appCtx.Output, customer)
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      customer,
+		SuccessMessage: "Customer updated",
+		RenderHuman: func(w io.Writer) error {
+			return renderCustomer(w, customer)
+		},
+	})
 }
 
 func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
