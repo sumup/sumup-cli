@@ -47,6 +47,19 @@ func TestRenderTable(t *testing.T) {
 	}
 }
 
+func TestRenderTableWithOptionsSupportsEmptyTextWithoutTitle(t *testing.T) {
+	var out bytes.Buffer
+
+	display.RenderTableWithOptions(&out, []string{"ID"}, nil, display.TableOptions{
+		EmptyText: "Nothing here",
+	})
+
+	rendered := out.String()
+	if strings.TrimSpace(rendered) != "Nothing here" {
+		t.Fatalf("RenderTableWithOptions() output = %q, want custom empty text", rendered)
+	}
+}
+
 func TestRenderSections(t *testing.T) {
 	var out bytes.Buffer
 

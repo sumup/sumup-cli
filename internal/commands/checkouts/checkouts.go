@@ -362,7 +362,11 @@ func listPaymentMethods(ctx context.Context, cmd *cli.Command) error {
 		rows = append(rows, []attribute.Value{attribute.ValueOf(method.ID)})
 	}
 
-	display.RenderTable(appCtx.Output, "Checkout Payment Methods", []string{"ID"}, rows)
+	display.RenderTableWithOptions(appCtx.Output, []string{"ID"}, rows, display.TableOptions{
+		Title:              "Checkout Payment Methods",
+		EmptyText:          "No payment methods available",
+		HighlightIDColumns: true,
+	})
 	return nil
 }
 
