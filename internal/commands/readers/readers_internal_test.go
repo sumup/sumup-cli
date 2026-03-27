@@ -1,12 +1,16 @@
 package readers
 
 import (
+	"bytes"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	sumup "github.com/sumup/sumup-go"
 	"github.com/urfave/cli/v3"
+
+	"github.com/sumup/sumup-cli/internal/app"
 )
 
 func TestNewCommand(t *testing.T) {
@@ -27,6 +31,28 @@ func TestFormatCreateReaderError(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "create reader:")
+	})
+}
+
+func TestRenderReader(t *testing.T) {
+	t.Run("uses exact local timestamps when requested", func(t *testing.T) {
+		var out bytes.Buffer
+		updatedAt := time.Date(2026, time.March, 27, 10, 0, 0, 0, time.UTC)
+
+		reader := &sumup.Reader{
+			ID:        "reader-1",
+			Name:      "Front Desk",
+			Status:    sumup.ReaderStatusPaired,
+			UpdatedAt: updatedAt,
+			Device: sumup.ReaderDevice{
+				Identifier: "device-1",
+			},
+		}
+
+		err := renderReader(&app.Context{Output: &out, ExactTimestamps: true}, &out, reader)
+
+		require.NoError(t, err)
+		assert.Contains(t, out.String(), updatedAt.In(time.Local).Format(time.RFC3339))
 	})
 }
 

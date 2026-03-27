@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/urfave/cli/v3"
 
@@ -224,7 +223,7 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 			attribute.ValueOf(memberEmail(member)),
 			attribute.ValueOf(memberRoles(member.Roles)),
 			attribute.ValueOf(membershipStatusLabel(member.Status)),
-			attribute.ValueOf(member.CreatedAt.UTC().Format(time.RFC3339)),
+			attribute.ValueOf(util.TimeOrDash(appCtx, &member.CreatedAt)),
 		})
 	}
 
@@ -340,7 +339,7 @@ func getMember(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, member)
 	}
 
-	return renderMember(appCtx.Output, member)
+	return renderMember(appCtx, appCtx.Output, member)
 }
 
 func updateMember(ctx context.Context, cmd *cli.Command) error {
@@ -403,7 +402,7 @@ func updateMember(ctx context.Context, cmd *cli.Command) error {
 	if err := message.Success(appCtx.StatusOutput, "Member updated"); err != nil {
 		return err
 	}
-	return renderMember(appCtx.Output, member)
+	return renderMember(appCtx, appCtx.Output, member)
 }
 
 func deleteMember(ctx context.Context, cmd *cli.Command) error {
@@ -477,14 +476,10 @@ func membershipStatusLabel(status sumup.MembershipStatus) string {
 	}
 }
 
-func renderMember(w io.Writer, member *sumup.Member) error {
+func renderMember(appCtx *app.Context, w io.Writer, member *sumup.Member) error {
 	if member == nil {
 		return nil
 	}
-
-	var createdAt, updatedAt string
-	createdAt = member.CreatedAt.UTC().Format(time.RFC3339)
-	updatedAt = member.UpdatedAt.UTC().Format(time.RFC3339)
 
 	details := []attribute.KeyValue{
 		attribute.ID(member.ID),
@@ -492,8 +487,8 @@ func renderMember(w io.Writer, member *sumup.Member) error {
 		attribute.Attribute("Roles", attribute.Styled(memberRoles(member.Roles))),
 		attribute.Attribute("Status", attribute.Styled(membershipStatusLabel(member.Status))),
 		attribute.Attribute("Nickname", attribute.Styled(memberNickname(member))),
-		attribute.Attribute("Created At", attribute.Styled(createdAt)),
-		attribute.Attribute("Updated At", attribute.Styled(updatedAt)),
+		attribute.Attribute("Created At", attribute.Styled(util.TimeOrDash(appCtx, &member.CreatedAt))),
+		attribute.Attribute("Updated At", attribute.Styled(util.TimeOrDash(appCtx, &member.UpdatedAt))),
 	}
 
 	return display.DataList(w, details)

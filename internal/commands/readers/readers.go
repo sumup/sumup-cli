@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"strings"
-	"time"
 
 	"github.com/urfave/cli/v3"
 
@@ -468,7 +467,7 @@ func getReader(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, reader)
 	}
 
-	return renderReader(appCtx.Output, reader)
+	return renderReader(appCtx, appCtx.Output, reader)
 }
 
 func updateReader(ctx context.Context, cmd *cli.Command) error {
@@ -499,7 +498,7 @@ func updateReader(ctx context.Context, cmd *cli.Command) error {
 	if err := message.Success(appCtx.StatusOutput, "Reader updated"); err != nil {
 		return err
 	}
-	return renderReader(appCtx.Output, reader)
+	return renderReader(appCtx, appCtx.Output, reader)
 }
 
 func terminateCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -527,7 +526,7 @@ func terminateCheckout(ctx context.Context, cmd *cli.Command) error {
 	return message.Success(appCtx.StatusOutput, "Reader checkout termination requested")
 }
 
-func renderReader(w io.Writer, reader *sumup.Reader) error {
+func renderReader(appCtx *app.Context, w io.Writer, reader *sumup.Reader) error {
 	if reader == nil {
 		return nil
 	}
@@ -538,7 +537,7 @@ func renderReader(w io.Writer, reader *sumup.Reader) error {
 		attribute.Attribute("Status", attribute.Styled(string(reader.Status))),
 		attribute.Attribute("Model", attribute.Styled(string(reader.Device.Model))),
 		attribute.Attribute("Identifier", attribute.Styled(reader.Device.Identifier)),
-		attribute.Attribute("Updated At", attribute.Styled(reader.UpdatedAt.UTC().Format(time.RFC3339))),
+		attribute.Attribute("Updated At", attribute.Styled(util.TimeOrDash(appCtx, &reader.UpdatedAt))),
 		attribute.OptionalString("Service Account ID", reader.ServiceAccountID),
 	})
 }

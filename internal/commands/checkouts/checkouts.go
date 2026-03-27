@@ -289,7 +289,7 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 	}
 	if checkout.ValidUntil != nil {
 		if validUntil := checkout.ValidUntil.Value(); validUntil != nil {
-			details = append(details, attribute.Attribute("Valid Until", attribute.Styled(validUntil.UTC().Format(time.RFC3339))))
+			details = append(details, attribute.Attribute("Valid Until", attribute.Styled(util.TimeOrDash(appCtx, validUntil))))
 		}
 	}
 	return display.DataList(appCtx.Output, details)

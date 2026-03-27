@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/urfave/cli/v3"
 
 	sumup "github.com/sumup/sumup-go"
 
 	"github.com/sumup/sumup-cli/internal/app"
+	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
 	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
@@ -113,7 +113,7 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 			attribute.ValueOf(string(membership.Resource.Type)),
 			attribute.ValueOf(memberRoles(membership.Roles)),
 			attribute.ValueOf(membershipStatusLabel(membership.Status)),
-			attribute.ValueOf(membership.CreatedAt.UTC().Format(time.RFC3339)),
+			attribute.ValueOf(util.TimeOrDash(appCtx, &membership.CreatedAt)),
 		})
 	}
 
