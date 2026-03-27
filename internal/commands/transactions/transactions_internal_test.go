@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	sumup "github.com/sumup/sumup-go"
 	"github.com/urfave/cli/v3"
 )
@@ -22,33 +24,21 @@ func TestTransactionsListParamsFromCommand(t *testing.T) {
 		}, listTransactionsFlags())
 
 		params, err := transactionsListParamsFromCommand(cmd)
-		if err != nil {
-			t.Fatalf("transactionsListParamsFromCommand() error = %v", err)
-		}
-
-		if params.Limit == nil || *params.Limit != 5 {
-			t.Fatalf("Limit = %v, want 5", params.Limit)
-		}
-		if params.ChangesSince == nil || !params.ChangesSince.Equal(time.Date(2026, time.March, 26, 12, 0, 0, 0, time.UTC)) {
-			t.Fatalf("ChangesSince = %v, want 2026-03-26T12:00:00Z", params.ChangesSince)
-		}
-		if len(params.PaymentTypes) != 1 || params.PaymentTypes[0] != sumup.PaymentType("CARD") {
-			t.Fatalf("PaymentTypes = %v, want [CARD]", params.PaymentTypes)
-		}
-		if len(params.Statuses) != 1 || params.Statuses[0] != "SUCCESSFUL" {
-			t.Fatalf("Statuses = %v, want [SUCCESSFUL]", params.Statuses)
-		}
-		if len(params.Users) != 1 || params.Users[0] != "user@example.com" {
-			t.Fatalf("Users = %v, want [user@example.com]", params.Users)
-		}
+		require.NoError(t, err)
+		require.NotNil(t, params.Limit)
+		assert.Equal(t, 5, *params.Limit)
+		require.NotNil(t, params.ChangesSince)
+		assert.True(t, params.ChangesSince.Equal(time.Date(2026, time.March, 26, 12, 0, 0, 0, time.UTC)))
+		assert.Equal(t, []sumup.PaymentType{sumup.PaymentType("CARD")}, params.PaymentTypes)
+		assert.Equal(t, []string{"SUCCESSFUL"}, params.Statuses)
+		assert.Equal(t, []string{"user@example.com"}, params.Users)
 	})
 
 	t.Run("rejects invalid RFC3339 timestamps", func(t *testing.T) {
 		cmd := runCommandForTest(t, []string{"sumup", "--changes-since", "not-a-time"}, listTransactionsFlags())
 
-		if _, err := transactionsListParamsFromCommand(cmd); err == nil {
-			t.Fatal("transactionsListParamsFromCommand() error = nil, want non-nil")
-		}
+		_, err := transactionsListParamsFromCommand(cmd)
+		require.Error(t, err)
 	})
 }
 
@@ -57,36 +47,31 @@ func TestTransactionLookupParamsFromCommand(t *testing.T) {
 		cmd := runCommandForTest(t, []string{"sumup", "--transaction-code", "TX123"}, getTransactionFlags())
 
 		params, err := transactionLookupParamsFromCommand(cmd)
-		if err != nil {
-			t.Fatalf("transactionLookupParamsFromCommand() error = %v", err)
-		}
-		if params.TransactionCode == nil || *params.TransactionCode != "TX123" {
-			t.Fatalf("TransactionCode = %v, want TX123", params.TransactionCode)
-		}
+		require.NoError(t, err)
+		require.NotNil(t, params.TransactionCode)
+		assert.Equal(t, "TX123", *params.TransactionCode)
 	})
 
 	t.Run("rejects missing lookups", func(t *testing.T) {
 		cmd := runCommandForTest(t, []string{"sumup"}, getTransactionFlags())
 
-		if _, err := transactionLookupParamsFromCommand(cmd); err == nil {
-			t.Fatal("transactionLookupParamsFromCommand() error = nil, want non-nil")
-		}
+		_, err := transactionLookupParamsFromCommand(cmd)
+		require.Error(t, err)
 	})
 
 	t.Run("rejects multiple lookups", func(t *testing.T) {
 		cmd := runCommandForTest(t, []string{"sumup", "txn-1", "--transaction-code", "TX123"}, getTransactionFlags())
 
-		if _, err := transactionLookupParamsFromCommand(cmd); err == nil {
-			t.Fatal("transactionLookupParamsFromCommand() error = nil, want non-nil")
-		}
+		_, err := transactionLookupParamsFromCommand(cmd)
+		require.Error(t, err)
 	})
 }
 
 func TestPaymentTypesFromStrings(t *testing.T) {
-	got := paymentTypesFromStrings([]string{"CARD", "", "CASH"})
-	if len(got) != 2 || got[0] != sumup.PaymentType("CARD") || got[1] != sumup.PaymentType("CASH") {
-		t.Fatalf("paymentTypesFromStrings() = %v, want [CARD CASH]", got)
-	}
+	t.Run("filters empty values and preserves valid payment types", func(t *testing.T) {
+		got := paymentTypesFromStrings([]string{"CARD", "", "CASH"})
+		assert.Equal(t, []sumup.PaymentType{sumup.PaymentType("CARD"), sumup.PaymentType("CASH")}, got)
+	})
 }
 
 func listTransactionsFlags() []cli.Flag {
@@ -129,7 +114,7 @@ func runCommandForTest(t *testing.T, args []string, flags []cli.Flag) *cli.Comma
 	}
 
 	if err := cmd.Run(context.Background(), args); err != nil {
-		t.Fatalf("Run() error = %v", err)
+		require.NoError(t, err)
 	}
 
 	return captured

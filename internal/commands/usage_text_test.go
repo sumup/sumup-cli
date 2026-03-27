@@ -3,6 +3,9 @@ package commands_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/sumup/sumup-cli/internal/commands/payouts"
 	"github.com/sumup/sumup-cli/internal/commands/receipts"
 	"github.com/sumup/sumup-cli/internal/commands/transactions"
@@ -19,13 +22,11 @@ func TestCommandUsageDoesNotAdvertisePlaceholders(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if tt.usage == "" {
-			t.Fatalf("%s usage is empty", tt.name)
-		}
-		if tt.usage == "Placeholder for the transactions API resource." ||
-			tt.usage == "Placeholder for the payouts API resource." ||
-			tt.usage == "Placeholder for the receipts API resource." {
-			t.Fatalf("%s usage still contains placeholder text: %q", tt.name, tt.usage)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			require.NotEmpty(t, tt.usage)
+			assert.NotEqual(t, "Placeholder for the transactions API resource.", tt.usage)
+			assert.NotEqual(t, "Placeholder for the payouts API resource.", tt.usage)
+			assert.NotEqual(t, "Placeholder for the receipts API resource.", tt.usage)
+		})
 	}
 }

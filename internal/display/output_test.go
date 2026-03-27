@@ -6,66 +6,61 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/sumup/sumup-cli/internal/display"
 	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
 
 func TestPrintJSON(t *testing.T) {
-	var out bytes.Buffer
+	t.Run("renders pretty json", func(t *testing.T) {
+		var out bytes.Buffer
 
-	if err := display.PrintJSON(&out, map[string]string{"status": "ok"}); err != nil {
-		t.Fatalf("PrintJSON() error = %v", err)
-	}
+		err := display.PrintJSON(&out, map[string]string{"status": "ok"})
 
-	const want = "{\n  \"status\": \"ok\"\n}\n"
-	if normalizeOutput(out.String()) != normalizeOutput(want) {
-		t.Fatalf("PrintJSON() output = %q, want %q", out.String(), want)
-	}
+		require.NoError(t, err)
+		assert.Equal(t, normalizeOutput("{\n  \"status\": \"ok\"\n}\n"), normalizeOutput(out.String()))
+	})
 }
 
 func TestDataList(t *testing.T) {
-	var out bytes.Buffer
+	t.Run("renders key value rows", func(t *testing.T) {
+		var out bytes.Buffer
 
-	if err := display.DataList(&out, []attribute.KeyValue{
-		attribute.Attribute("Status", attribute.Styled("ok")),
-	}); err != nil {
-		t.Fatalf("DataList() error = %v", err)
-	}
+		err := display.DataList(&out, []attribute.KeyValue{
+			attribute.Attribute("Status", attribute.Styled("ok")),
+		})
 
-	const want = "Status: ok\n"
-	if normalizeOutput(out.String()) != normalizeOutput(want) {
-		t.Fatalf("DataList() output = %q, want %q", out.String(), want)
-	}
+		require.NoError(t, err)
+		assert.Equal(t, normalizeOutput("Status: ok\n"), normalizeOutput(out.String()))
+	})
 }
 
 func TestRenderTable(t *testing.T) {
-	var out bytes.Buffer
+	t.Run("renders title and row content", func(t *testing.T) {
+		var out bytes.Buffer
 
-	if err := display.RenderTable(&out, "Items", []string{"ID"}, [][]attribute.Value{
-		{attribute.ValueOf("123")},
-	}); err != nil {
-		t.Fatalf("RenderTable() error = %v", err)
-	}
+		err := display.RenderTable(&out, "Items", []string{"ID"}, [][]attribute.Value{
+			{attribute.ValueOf("123")},
+		})
 
-	const want = "Items\nID\n123"
-	if normalizeOutput(out.String()) != normalizeOutput(want) {
-		t.Fatalf("RenderTable() output = %q, want normalized %q", out.String(), want)
-	}
+		require.NoError(t, err)
+		assert.Equal(t, normalizeOutput("Items\nID\n123"), normalizeOutput(out.String()))
+	})
 }
 
 func TestRenderTableWithOptionsSupportsEmptyTextWithoutTitle(t *testing.T) {
-	var out bytes.Buffer
+	t.Run("renders custom empty text without a title", func(t *testing.T) {
+		var out bytes.Buffer
 
-	if err := display.RenderTableWithOptions(&out, []string{"ID"}, nil, display.TableOptions{
-		EmptyText: "Nothing here",
-	}); err != nil {
-		t.Fatalf("RenderTableWithOptions() error = %v", err)
-	}
+		err := display.RenderTableWithOptions(&out, []string{"ID"}, nil, display.TableOptions{
+			EmptyText: "Nothing here",
+		})
 
-	rendered := out.String()
-	if strings.TrimSpace(rendered) != "Nothing here" {
-		t.Fatalf("RenderTableWithOptions() output = %q, want custom empty text", rendered)
-	}
+		require.NoError(t, err)
+		assert.Equal(t, "Nothing here", strings.TrimSpace(out.String()))
+	})
 }
 
 var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
@@ -85,25 +80,26 @@ func normalizeOutput(value string) string {
 }
 
 func TestRenderSections(t *testing.T) {
-	var out bytes.Buffer
+	t.Run("renders section titles and lines", func(t *testing.T) {
+		var out bytes.Buffer
 
-	if err := display.RenderSections(&out, []display.Section{
-		{
-			Title: "Transaction",
-			Pairs: []attribute.KeyValue{
-				attribute.Attribute("Status", attribute.Styled("ok")),
+		err := display.RenderSections(&out, []display.Section{
+			{
+				Title: "Transaction",
+				Pairs: []attribute.KeyValue{
+					attribute.Attribute("Status", attribute.Styled("ok")),
+				},
 			},
-		},
-		{
-			Title: "Events",
-			Lines: []string{"- created"},
-		},
-	}); err != nil {
-		t.Fatalf("RenderSections() error = %v", err)
-	}
+			{
+				Title: "Events",
+				Lines: []string{"- created"},
+			},
+		})
 
-	rendered := out.String()
-	if !strings.Contains(rendered, "Transaction") || !strings.Contains(rendered, "Events") || !strings.Contains(rendered, "- created") {
-		t.Fatalf("RenderSections() output = %q, want section titles and lines", rendered)
-	}
+		require.NoError(t, err)
+		rendered := out.String()
+		assert.Contains(t, rendered, "Transaction")
+		assert.Contains(t, rendered, "Events")
+		assert.Contains(t, rendered, "- created")
+	})
 }

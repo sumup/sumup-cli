@@ -1,42 +1,41 @@
-package version
+package version_test
 
 import (
 	"bytes"
 	"context"
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/sumup/sumup-cli/internal/app"
+	versioncmd "github.com/sumup/sumup-cli/internal/commands/version"
 )
 
-func TestVersionCommandWritesToAppOutput(t *testing.T) {
-	var out bytes.Buffer
-	cmd := NewCommand()
-	cmd.Metadata = map[string]any{
-		app.ContextKey: &app.Context{Output: &out},
-	}
+func TestNewCommand(t *testing.T) {
+	t.Run("writes build details to app output", func(t *testing.T) {
+		var out bytes.Buffer
+		cmd := versioncmd.NewCommand()
+		cmd.Metadata = map[string]any{
+			app.ContextKey: &app.Context{Output: &out},
+		}
 
-	if err := cmd.Action(context.Background(), cmd); err != nil {
-		t.Fatalf("Action() error = %v", err)
-	}
+		err := cmd.Action(context.Background(), cmd)
 
-	if !strings.Contains(out.String(), "Version:") {
-		t.Fatalf("Action() output = %q, want version details", out.String())
-	}
-}
+		require.NoError(t, err)
+		assert.Contains(t, out.String(), "Version:")
+	})
 
-func TestVersionCommandPrintsJSONWhenRequested(t *testing.T) {
-	var out bytes.Buffer
-	cmd := NewCommand()
-	cmd.Metadata = map[string]any{
-		app.ContextKey: &app.Context{Output: &out, JSONOutput: true},
-	}
+	t.Run("prints json when requested", func(t *testing.T) {
+		var out bytes.Buffer
+		cmd := versioncmd.NewCommand()
+		cmd.Metadata = map[string]any{
+			app.ContextKey: &app.Context{Output: &out, JSONOutput: true},
+		}
 
-	if err := cmd.Action(context.Background(), cmd); err != nil {
-		t.Fatalf("Action() error = %v", err)
-	}
+		err := cmd.Action(context.Background(), cmd)
 
-	if !strings.Contains(out.String(), `"version"`) {
-		t.Fatalf("Action() output = %q, want JSON payload", out.String())
-	}
+		require.NoError(t, err)
+		assert.Contains(t, out.String(), `"version"`)
+	})
 }
