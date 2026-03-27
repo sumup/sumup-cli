@@ -228,13 +228,12 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	display.RenderTable(
+	return display.RenderTable(
 		appCtx.Output,
 		"Members",
 		[]string{"ID", "Email", "Roles", "Status", "Created At"},
 		rows,
 	)
-	return nil
 }
 
 func createMember(ctx context.Context, cmd *cli.Command) error {
@@ -276,10 +275,9 @@ func createMember(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	message.Success(appCtx.StatusOutput, "Member created")
-	display.DataList(appCtx.Output, []attribute.KeyValue{
+	return display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(response.ID),
 	})
-	return nil
 }
 
 func inviteMember(ctx context.Context, cmd *cli.Command) error {
@@ -308,10 +306,9 @@ func inviteMember(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	message.Success(appCtx.StatusOutput, "Member invited")
-	display.DataList(appCtx.Output, []attribute.KeyValue{
+	return display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(response.ID),
 	})
-	return nil
 }
 
 func getMember(ctx context.Context, cmd *cli.Command) error {
@@ -339,8 +336,7 @@ func getMember(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, member)
 	}
 
-	renderMember(appCtx.Output, member)
-	return nil
+	return renderMember(appCtx.Output, member)
 }
 
 func updateMember(ctx context.Context, cmd *cli.Command) error {
@@ -401,8 +397,7 @@ func updateMember(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	message.Success(appCtx.StatusOutput, "Member updated")
-	renderMember(appCtx.Output, member)
-	return nil
+	return renderMember(appCtx.Output, member)
 }
 
 func deleteMember(ctx context.Context, cmd *cli.Command) error {
@@ -477,9 +472,9 @@ func membershipStatusLabel(status sumup.MembershipStatus) string {
 	}
 }
 
-func renderMember(w io.Writer, member *sumup.Member) {
+func renderMember(w io.Writer, member *sumup.Member) error {
 	if member == nil {
-		return
+		return nil
 	}
 
 	var createdAt, updatedAt string
@@ -496,7 +491,7 @@ func renderMember(w io.Writer, member *sumup.Member) {
 		attribute.Attribute("Updated At", attribute.Styled(updatedAt)),
 	}
 
-	display.DataList(w, details)
+	return display.DataList(w, details)
 }
 
 func memberNickname(member *sumup.Member) string {

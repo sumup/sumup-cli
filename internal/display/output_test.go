@@ -24,9 +24,11 @@ func TestPrintJSON(t *testing.T) {
 func TestDataList(t *testing.T) {
 	var out bytes.Buffer
 
-	display.DataList(&out, []attribute.KeyValue{
+	if err := display.DataList(&out, []attribute.KeyValue{
 		attribute.Attribute("Status", attribute.Styled("ok")),
-	})
+	}); err != nil {
+		t.Fatalf("DataList() error = %v", err)
+	}
 
 	rendered := out.String()
 	if !strings.Contains(rendered, "ok") || !strings.Contains(rendered, ":") {
@@ -37,9 +39,11 @@ func TestDataList(t *testing.T) {
 func TestRenderTable(t *testing.T) {
 	var out bytes.Buffer
 
-	display.RenderTable(&out, "Items", []string{"ID"}, [][]attribute.Value{
+	if err := display.RenderTable(&out, "Items", []string{"ID"}, [][]attribute.Value{
 		{attribute.ValueOf("123")},
-	})
+	}); err != nil {
+		t.Fatalf("RenderTable() error = %v", err)
+	}
 
 	rendered := out.String()
 	if !strings.Contains(rendered, "Items") || !strings.Contains(rendered, "123") {
@@ -50,9 +54,11 @@ func TestRenderTable(t *testing.T) {
 func TestRenderTableWithOptionsSupportsEmptyTextWithoutTitle(t *testing.T) {
 	var out bytes.Buffer
 
-	display.RenderTableWithOptions(&out, []string{"ID"}, nil, display.TableOptions{
+	if err := display.RenderTableWithOptions(&out, []string{"ID"}, nil, display.TableOptions{
 		EmptyText: "Nothing here",
-	})
+	}); err != nil {
+		t.Fatalf("RenderTableWithOptions() error = %v", err)
+	}
 
 	rendered := out.String()
 	if strings.TrimSpace(rendered) != "Nothing here" {
@@ -63,7 +69,7 @@ func TestRenderTableWithOptionsSupportsEmptyTextWithoutTitle(t *testing.T) {
 func TestRenderSections(t *testing.T) {
 	var out bytes.Buffer
 
-	display.RenderSections(&out, []display.Section{
+	if err := display.RenderSections(&out, []display.Section{
 		{
 			Title: "Transaction",
 			Pairs: []attribute.KeyValue{
@@ -74,7 +80,9 @@ func TestRenderSections(t *testing.T) {
 			Title: "Events",
 			Lines: []string{"- created"},
 		},
-	})
+	}); err != nil {
+		t.Fatalf("RenderSections() error = %v", err)
+	}
 
 	rendered := out.String()
 	if !strings.Contains(rendered, "Transaction") || !strings.Contains(rendered, "Events") || !strings.Contains(rendered, "- created") {

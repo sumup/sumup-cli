@@ -55,13 +55,12 @@ func getMerchant(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, merchant)
 	}
 
-	renderMerchant(appCtx, merchant)
-	return nil
+	return renderMerchant(appCtx, merchant)
 }
 
-func renderMerchant(appCtx *app.Context, merchant *sumup.Merchant) {
+func renderMerchant(appCtx *app.Context, merchant *sumup.Merchant) error {
 	if merchant == nil {
-		return
+		return nil
 	}
 
 	details := []attribute.KeyValue{
@@ -85,5 +84,5 @@ func renderMerchant(appCtx *app.Context, merchant *sumup.Merchant) {
 		)
 	}
 
-	display.DataList(appCtx.Output, details)
+	return display.DataList(appCtx.Output, details)
 }

@@ -178,13 +178,12 @@ func listCheckouts(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	display.RenderTable(
+	return display.RenderTable(
 		appCtx.Output,
 		"Checkouts",
 		[]string{"ID", "Reference", "Amount", "Status", "Merchant", "Created At"},
 		rows,
 	)
-	return nil
 }
 
 func createCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -253,8 +252,7 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 	if checkout.Description != nil && *checkout.Description != "" {
 		details = append(details, attribute.Attribute("Description", attribute.Styled(*checkout.Description)))
 	}
-	display.DataList(appCtx.Output, details)
-	return nil
+	return display.DataList(appCtx.Output, details)
 }
 
 func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -289,8 +287,7 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 			details = append(details, attribute.Attribute("Valid Until", attribute.Styled(validUntil.UTC().Format(time.RFC3339))))
 		}
 	}
-	display.DataList(appCtx.Output, details)
-	return nil
+	return display.DataList(appCtx.Output, details)
 }
 
 func getCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -312,8 +309,7 @@ func getCheckout(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, checkout)
 	}
 
-	renderCheckout(appCtx, checkout)
-	return nil
+	return renderCheckout(appCtx, checkout)
 }
 
 func listPaymentMethods(ctx context.Context, cmd *cli.Command) error {
@@ -362,12 +358,11 @@ func listPaymentMethods(ctx context.Context, cmd *cli.Command) error {
 		rows = append(rows, []attribute.Value{attribute.ValueOf(method.ID)})
 	}
 
-	display.RenderTableWithOptions(appCtx.Output, []string{"ID"}, rows, display.TableOptions{
+	return display.RenderTableWithOptions(appCtx.Output, []string{"ID"}, rows, display.TableOptions{
 		Title:              "Checkout Payment Methods",
 		EmptyText:          "No payment methods available",
 		HighlightIDColumns: true,
 	})
-	return nil
 }
 
 func processCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -410,27 +405,25 @@ func processCheckout(ctx context.Context, cmd *cli.Command) error {
 
 	if response.CheckoutSuccess != nil {
 		message.Success(appCtx.StatusOutput, "Checkout processed")
-		renderCheckout(appCtx, response.CheckoutSuccess)
-		return nil
+		return renderCheckout(appCtx, response.CheckoutSuccess)
 	}
 
 	if response.CheckoutAccepted != nil {
 		message.Success(appCtx.StatusOutput, "Checkout accepted")
 		if response.CheckoutAccepted.NextStep != nil {
-			display.DataList(appCtx.Output, []attribute.KeyValue{
+			return display.DataList(appCtx.Output, []attribute.KeyValue{
 				attribute.OptionalString("Method", response.CheckoutAccepted.NextStep.Method),
 				attribute.OptionalString("URL", response.CheckoutAccepted.NextStep.URL),
 				attribute.OptionalString("Redirect URL", response.CheckoutAccepted.NextStep.RedirectURL),
 			})
-			return nil
 		}
 	}
 	return nil
 }
 
-func renderCheckout(appCtx *app.Context, checkout *sumup.CheckoutSuccess) {
+func renderCheckout(appCtx *app.Context, checkout *sumup.CheckoutSuccess) error {
 	if checkout == nil {
-		return
+		return nil
 	}
 
 	details := []attribute.KeyValue{}
@@ -448,7 +441,7 @@ func renderCheckout(appCtx *app.Context, checkout *sumup.CheckoutSuccess) {
 		attribute.OptionalString("Transaction Code", checkout.TransactionCode),
 		attribute.Attribute("Created At", attribute.Styled(util.TimeOrDash(appCtx, checkout.Date))),
 	)
-	display.DataList(appCtx.Output, details)
+	return display.DataList(appCtx.Output, details)
 }
 
 func checkoutPersonalDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails, int, error) {

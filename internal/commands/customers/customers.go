@@ -142,8 +142,7 @@ func createCustomer(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	message.Success(appCtx.StatusOutput, "Customer created")
-	renderCustomer(appCtx.Output, customer)
-	return nil
+	return renderCustomer(appCtx.Output, customer)
 }
 
 func getCustomer(ctx context.Context, cmd *cli.Command) error {
@@ -166,8 +165,7 @@ func getCustomer(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, customer)
 	}
 
-	renderCustomer(appCtx.Output, customer)
-	return nil
+	return renderCustomer(appCtx.Output, customer)
 }
 
 func updateCustomer(ctx context.Context, cmd *cli.Command) error {
@@ -202,8 +200,7 @@ func updateCustomer(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	message.Success(appCtx.StatusOutput, "Customer updated")
-	renderCustomer(appCtx.Output, customer)
-	return nil
+	return renderCustomer(appCtx.Output, customer)
 }
 
 func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
@@ -236,13 +233,12 @@ func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	display.RenderTable(
+	return display.RenderTable(
 		appCtx.Output,
 		"Payment Instruments",
 		[]string{"Token", "Type", "Card", "Active", "Created At"},
 		rows,
 	)
-	return nil
 }
 
 func deactivatePaymentInstrument(ctx context.Context, cmd *cli.Command) error {
@@ -353,17 +349,16 @@ func parseDate(value string) (*datetime.Date, error) {
 	return &date, nil
 }
 
-func renderCustomer(w io.Writer, customer *sumup.Customer) {
+func renderCustomer(w io.Writer, customer *sumup.Customer) error {
 	if customer == nil {
-		return
+		return nil
 	}
 
 	details := []attribute.KeyValue{
 		attribute.Attribute("Customer ID", attribute.Styled(customer.CustomerID)),
 	}
 	if customer.PersonalDetails == nil {
-		display.DataList(w, details)
-		return
+		return display.DataList(w, details)
 	}
 
 	personal := customer.PersonalDetails
@@ -379,7 +374,7 @@ func renderCustomer(w io.Writer, customer *sumup.Customer) {
 		details = append(details, attribute.Attribute("Birth Date", attribute.Styled("-")))
 	}
 	details = append(details, attribute.Attribute("Address", attribute.Styled(formatAddress(personal.Address))))
-	display.DataList(w, details)
+	return display.DataList(w, details)
 }
 
 func formatAddress(address *sumup.AddressLegacy) string {

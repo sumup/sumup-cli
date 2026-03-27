@@ -117,13 +117,12 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	display.RenderTable(
+	return display.RenderTable(
 		appCtx.Output,
 		"Memberships",
 		[]string{"ID", "Resource", "Type", "Roles", "Status", "Created At"},
 		rows,
 	)
-	return nil
 }
 
 func parseMembershipStatus(value string) (sumup.MembershipStatus, error) {

@@ -13,8 +13,7 @@ func PrintJSON(w io.Writer, v any) error {
 	if err != nil {
 		return fmt.Errorf("marshal json: %w", err)
 	}
-	writeln(w, string(data))
-	return nil
+	return writeln(w, string(data))
 }
 
 func writerOrStdout(w io.Writer) io.Writer {
@@ -24,10 +23,12 @@ func writerOrStdout(w io.Writer) io.Writer {
 	return w
 }
 
-func writeln(w io.Writer, args ...any) {
-	_, _ = fmt.Fprintln(writerOrStdout(w), args...)
+func writeln(w io.Writer, args ...any) error {
+	_, err := fmt.Fprintln(writerOrStdout(w), args...)
+	return err
 }
 
-func writef(w io.Writer, format string, args ...any) {
-	_, _ = fmt.Fprintf(writerOrStdout(w), format, args...)
+func writef(w io.Writer, format string, args ...any) error {
+	_, err := fmt.Fprintf(writerOrStdout(w), format, args...)
+	return err
 }
