@@ -54,9 +54,11 @@ func TestRenderTable(t *testing.T) {
 func TestRenderTableWithOptionsSupportsEmptyTextWithoutTitle(t *testing.T) {
 	var out bytes.Buffer
 
-	display.RenderTableWithOptions(&out, []string{"ID"}, nil, display.TableOptions{
+	if err := display.RenderTableWithOptions(&out, []string{"ID"}, nil, display.TableOptions{
 		EmptyText: "Nothing here",
-	})
+	}); err != nil {
+		t.Fatalf("RenderTableWithOptions() error = %v", err)
+	}
 
 	rendered := out.String()
 	if strings.TrimSpace(rendered) != "Nothing here" {
@@ -67,7 +69,7 @@ func TestRenderTableWithOptionsSupportsEmptyTextWithoutTitle(t *testing.T) {
 func TestRenderSections(t *testing.T) {
 	var out bytes.Buffer
 
-	display.RenderSections(&out, []display.Section{
+	if err := display.RenderSections(&out, []display.Section{
 		{
 			Title: "Transaction",
 			Pairs: []attribute.KeyValue{
@@ -78,7 +80,9 @@ func TestRenderSections(t *testing.T) {
 			Title: "Events",
 			Lines: []string{"- created"},
 		},
-	})
+	}); err != nil {
+		t.Fatalf("RenderSections() error = %v", err)
+	}
 
 	rendered := out.String()
 	if !strings.Contains(rendered, "Transaction") || !strings.Contains(rendered, "Events") || !strings.Contains(rendered, "- created") {

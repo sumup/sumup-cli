@@ -75,11 +75,10 @@ func getReceipt(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, receipt)
 	}
 
-	renderReceipt(appCtx.Output, receipt)
-	return nil
+	return renderReceipt(appCtx.Output, receipt)
 }
 
-func renderReceipt(w io.Writer, receipt *sumup.Receipt) {
+func renderReceipt(w io.Writer, receipt *sumup.Receipt) error {
 	sections := make([]display.Section, 0, 4)
 
 	if transaction := receipt.TransactionData; transaction != nil {
@@ -151,7 +150,7 @@ func renderReceipt(w io.Writer, receipt *sumup.Receipt) {
 		})
 	}
 
-	display.RenderSections(w, sections)
+	return display.RenderSections(w, sections)
 }
 
 func receiptAmount(transaction *sumup.ReceiptTransaction) string {

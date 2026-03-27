@@ -21,7 +21,7 @@ func TestRenderMerchant(t *testing.T) {
 	businessWebsite := "https://example.com"
 	sandbox := true
 
-	renderMerchant(&app.Context{Output: &out, ExactTimestamps: true}, &sumup.Merchant{
+	if err := renderMerchant(&app.Context{Output: &out, ExactTimestamps: true}, &sumup.Merchant{
 		MerchantCode:    "M123",
 		Alias:           &alias,
 		Country:         "DE",
@@ -35,7 +35,9 @@ func TestRenderMerchant(t *testing.T) {
 			Email:   &businessEmail,
 			Website: &businessWebsite,
 		},
-	})
+	}); err != nil {
+		t.Fatalf("renderMerchant() error = %v", err)
+	}
 
 	rendered := out.String()
 	for _, want := range []string{"M123", "Main account", "Example Shop", "shop@example.com", "https://example.com"} {
