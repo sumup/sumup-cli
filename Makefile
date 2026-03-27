@@ -43,3 +43,7 @@ LDFLAGS := -s -w \
 .PHONY: build
 build: ## Build CLI binary with build metadata
 	go build -ldflags "$(LDFLAGS)" -o ./bin/sumup ./cmd/sumup
+
+.PHONY: install
+install: ## Install CLI binary
+	go install ./cmd/sumup/...
