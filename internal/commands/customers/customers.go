@@ -238,12 +238,11 @@ func listPaymentInstruments(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	return display.RenderTable(
-		appCtx.Output,
-		"Payment Instruments",
-		[]string{"Token", "Type", "Card", "Active", "Created At"},
-		rows,
-	)
+	return display.RenderTableWithOptions(appCtx.Output, []string{"Token", "Type", "Card", "Active", "Created At"}, rows, display.TableOptions{
+		Title:             "Payment Instruments",
+		EmptyText:         "No items to display",
+		IdentifierColumns: []int{0},
+	})
 }
 
 func deactivatePaymentInstrument(ctx context.Context, cmd *cli.Command) error {

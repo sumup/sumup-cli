@@ -158,12 +158,11 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, items)
 	}
 
-	return display.RenderTable(
-		appCtx.Output,
-		"Transactions",
-		[]string{"ID", "Code", "Amount", "Status", "Payment Type", "Created At"},
-		transactionRows(appCtx, items),
-	)
+	return display.RenderTableWithOptions(appCtx.Output, []string{"ID", "Code", "Amount", "Status", "Payment Type", "Created At"}, transactionRows(appCtx, items), display.TableOptions{
+		Title:             "Transactions",
+		EmptyText:         "No items to display",
+		IdentifierColumns: []int{0},
+	})
 }
 
 func getTransaction(ctx context.Context, cmd *cli.Command) error {

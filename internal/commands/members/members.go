@@ -227,12 +227,11 @@ func listMembers(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	return display.RenderTable(
-		appCtx.Output,
-		"Members",
-		[]string{"ID", "Email", "Roles", "Status", "Created At"},
-		rows,
-	)
+	return display.RenderTableWithOptions(appCtx.Output, []string{"ID", "Email", "Roles", "Status", "Created At"}, rows, display.TableOptions{
+		Title:             "Members",
+		EmptyText:         "No items to display",
+		IdentifierColumns: []int{0},
+	})
 }
 
 func createMember(ctx context.Context, cmd *cli.Command) error {

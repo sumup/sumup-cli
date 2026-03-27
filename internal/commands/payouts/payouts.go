@@ -117,12 +117,11 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	return display.RenderTable(
-		appCtx.Output,
-		"Payouts",
-		[]string{"ID", "Date", "Amount", "Fee", "Status", "Type", "Reference"},
-		rows,
-	)
+	return display.RenderTableWithOptions(appCtx.Output, []string{"ID", "Date", "Amount", "Fee", "Status", "Type", "Reference"}, rows, display.TableOptions{
+		Title:             "Payouts",
+		EmptyText:         "No items to display",
+		IdentifierColumns: []int{0},
+	})
 }
 
 func parseDateArg(value string) (datetime.Date, error) {
