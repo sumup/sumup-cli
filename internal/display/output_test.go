@@ -24,9 +24,11 @@ func TestPrintJSON(t *testing.T) {
 func TestDataList(t *testing.T) {
 	var out bytes.Buffer
 
-	display.DataList(&out, []attribute.KeyValue{
+	if err := display.DataList(&out, []attribute.KeyValue{
 		attribute.Attribute("Status", attribute.Styled("ok")),
-	})
+	}); err != nil {
+		t.Fatalf("DataList() error = %v", err)
+	}
 
 	rendered := out.String()
 	if !strings.Contains(rendered, "ok") || !strings.Contains(rendered, ":") {
@@ -37,9 +39,11 @@ func TestDataList(t *testing.T) {
 func TestRenderTable(t *testing.T) {
 	var out bytes.Buffer
 
-	display.RenderTable(&out, "Items", []string{"ID"}, [][]attribute.Value{
+	if err := display.RenderTable(&out, "Items", []string{"ID"}, [][]attribute.Value{
 		{attribute.ValueOf("123")},
-	})
+	}); err != nil {
+		t.Fatalf("RenderTable() error = %v", err)
+	}
 
 	rendered := out.String()
 	if !strings.Contains(rendered, "Items") || !strings.Contains(rendered, "123") {

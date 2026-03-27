@@ -234,13 +234,12 @@ func listReaders(ctx context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	display.RenderTable(
+	return display.RenderTable(
 		appCtx.Output,
 		"Readers",
 		[]string{"ID", "Name", "Status", "Model", "Identifier"},
 		rows,
 	)
-	return nil
 }
 
 func addReader(ctx context.Context, cmd *cli.Command) error {
@@ -269,14 +268,13 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	message.Success(appCtx.StatusOutput, "Reader created")
-	display.DataList(appCtx.Output, []attribute.KeyValue{
+	return display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(string(reader.ID)),
 		attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
 		attribute.Attribute("Status", attribute.Styled(string(reader.Status))),
 		attribute.Attribute("Model", attribute.Styled(string(reader.Device.Model))),
 		attribute.Attribute("Identifier", attribute.Styled(reader.Device.Identifier)),
 	})
-	return nil
 }
 
 func deleteReader(ctx context.Context, cmd *cli.Command) error {
@@ -388,8 +386,7 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 	if desc := cmd.String("description"); desc != "" {
 		details = append(details, attribute.Attribute("Description", attribute.Styled(desc)))
 	}
-	display.DataList(appCtx.Output, details)
-	return nil
+	return display.DataList(appCtx.Output, details)
 }
 
 func readerStatus(ctx context.Context, cmd *cli.Command) error {
@@ -432,8 +429,7 @@ func readerStatus(ctx context.Context, cmd *cli.Command) error {
 		attribute.Attribute("Last Activity", attribute.Styled(util.TimeOrDash(appCtx, data.LastActivity))),
 	}
 
-	display.DataList(appCtx.Output, details)
-	return nil
+	return display.DataList(appCtx.Output, details)
 }
 
 func getReader(ctx context.Context, cmd *cli.Command) error {
@@ -464,8 +460,7 @@ func getReader(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, reader)
 	}
 
-	renderReader(appCtx.Output, reader)
-	return nil
+	return renderReader(appCtx.Output, reader)
 }
 
 func updateReader(ctx context.Context, cmd *cli.Command) error {
@@ -494,8 +489,7 @@ func updateReader(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	message.Success(appCtx.StatusOutput, "Reader updated")
-	renderReader(appCtx.Output, reader)
-	return nil
+	return renderReader(appCtx.Output, reader)
 }
 
 func terminateCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -524,12 +518,12 @@ func terminateCheckout(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func renderReader(w io.Writer, reader *sumup.Reader) {
+func renderReader(w io.Writer, reader *sumup.Reader) error {
 	if reader == nil {
-		return
+		return nil
 	}
 
-	display.DataList(w, []attribute.KeyValue{
+	return display.DataList(w, []attribute.KeyValue{
 		attribute.ID(string(reader.ID)),
 		attribute.Attribute("Name", attribute.Styled(string(reader.Name))),
 		attribute.Attribute("Status", attribute.Styled(string(reader.Status))),

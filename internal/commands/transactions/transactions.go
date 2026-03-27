@@ -157,13 +157,12 @@ func listTransactions(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, items)
 	}
 
-	display.RenderTable(
+	return display.RenderTable(
 		appCtx.Output,
 		"Transactions",
 		[]string{"ID", "Code", "Amount", "Status", "Payment Type", "Created At"},
 		transactionRows(appCtx, items),
 	)
-	return nil
 }
 
 func getTransaction(ctx context.Context, cmd *cli.Command) error {
@@ -191,8 +190,7 @@ func getTransaction(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, transaction)
 	}
 
-	renderTransactionDetails(appCtx, transaction)
-	return nil
+	return renderTransactionDetails(appCtx, transaction)
 }
 
 func refundTransaction(ctx context.Context, cmd *cli.Command) error {
@@ -225,7 +223,7 @@ func refundTransaction(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func renderTransactionDetails(appCtx *app.Context, transaction *sumup.TransactionFull) {
+func renderTransactionDetails(appCtx *app.Context, transaction *sumup.TransactionFull) error {
 	status := "-"
 	if transaction.Status != nil && *transaction.Status != "" {
 		status = string(*transaction.Status)
@@ -235,7 +233,7 @@ func renderTransactionDetails(appCtx *app.Context, transaction *sumup.Transactio
 		paymentType = string(*transaction.PaymentType)
 	}
 
-	display.DataList(appCtx.Output, []attribute.KeyValue{
+	return display.DataList(appCtx.Output, []attribute.KeyValue{
 		attribute.ID(util.StringOrDefault(transaction.ID, "-")),
 		attribute.Attribute("Status", attribute.Styled(status)),
 		attribute.OptionalString("Code", transaction.TransactionCode),

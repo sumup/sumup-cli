@@ -21,8 +21,8 @@ type TableOptions struct {
 }
 
 // RenderTable prints rows in a table using the terminal width to wrap columns.
-func RenderTable(w io.Writer, title string, headers []string, rows [][]attribute.Value) {
-	RenderTableWithOptions(w, headers, rows, TableOptions{
+func RenderTable(w io.Writer, title string, headers []string, rows [][]attribute.Value) error {
+	return RenderTableWithOptions(w, headers, rows, TableOptions{
 		Title:              title,
 		EmptyText:          "No items to display",
 		HighlightIDColumns: true,
@@ -30,15 +30,13 @@ func RenderTable(w io.Writer, title string, headers []string, rows [][]attribute
 }
 
 // RenderTableWithOptions prints rows in a table using configurable presentation options.
-func RenderTableWithOptions(w io.Writer, headers []string, rows [][]attribute.Value, opts TableOptions) {
+func RenderTableWithOptions(w io.Writer, headers []string, rows [][]attribute.Value, opts TableOptions) error {
 	if len(rows) == 0 {
 		title := strings.TrimSpace(opts.Title)
 		if title == "" {
-			writef(w, "%s\n", opts.EmptyText)
-			return
+			return writef(w, "%s\n", opts.EmptyText)
 		}
-		writef(w, "%s: %s\n", title, opts.EmptyText)
-		return
+		return writef(w, "%s: %s\n", title, opts.EmptyText)
 	}
 
 	width, ok := terminalWidth(w)
@@ -97,9 +95,14 @@ func RenderTableWithOptions(w io.Writer, headers []string, rows [][]attribute.Va
 
 	out := writerOrStdout(w)
 	if strings.TrimSpace(opts.Title) != "" {
-		_, _ = fmt.Fprintln(out, opts.Title)
+		if _, err := fmt.Fprintln(out, opts.Title); err != nil {
+			return err
+		}
 	}
-	_, _ = fmt.Fprintln(out, t.Render())
+	if _, err := fmt.Fprintln(out, t.Render()); err != nil {
+		return err
+	}
+	return nil
 }
 
 func isIDHeader(header string) bool {

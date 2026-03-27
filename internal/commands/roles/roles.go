@@ -50,13 +50,12 @@ func listRoles(_ context.Context, cmd *cli.Command) error {
 		})
 	}
 
-	display.RenderTable(
+	return display.RenderTable(
 		appCtx.Output,
 		"Roles",
 		[]string{"Role", "Display Name", "Description"},
 		rows,
 	)
-	return nil
 }
 
 func defaultRoles() []role {

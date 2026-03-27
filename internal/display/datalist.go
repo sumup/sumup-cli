@@ -8,15 +8,18 @@ import (
 )
 
 // DataList renders key/value pairs as "Key: Value" rows where keys are bold.
-func DataList(w io.Writer, pairs []attribute.KeyValue) {
+func DataList(w io.Writer, pairs []attribute.KeyValue) error {
 	if len(pairs) == 0 {
-		return
+		return nil
 	}
 
 	for _, pair := range pairs {
 		if strings.TrimSpace(pair.Key.Text) == "" {
 			continue
 		}
-		writef(w, "%s: %s\n", pair.Key.String(), pair.Value.String())
+		if err := writef(w, "%s: %s\n", pair.Key.String(), pair.Value.String()); err != nil {
+			return err
+		}
 	}
+	return nil
 }
