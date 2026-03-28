@@ -2,19 +2,16 @@ package roles
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/urfave/cli/v3"
+
+	sumup "github.com/sumup/sumup-go"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/display"
 	"github.com/sumup/sumup-cli/internal/display/attribute"
 )
-
-type role struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"display_name"`
-	Description string `json:"description"`
-}
 
 func NewCommand() *cli.Command {
 	return &cli.Command{
@@ -25,65 +22,58 @@ func NewCommand() *cli.Command {
 				Name:   "list",
 				Usage:  "List available roles.",
 				Action: listRoles,
-				Flags:  []cli.Flag{},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "merchant-code",
+						Usage:   "Merchant code whose roles should be listed. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
+					},
+				},
 			},
 		},
 	}
 }
 
-func listRoles(_ context.Context, cmd *cli.Command) error {
+func listRoles(ctx context.Context, cmd *cli.Command) error {
 	appCtx, err := app.GetAppContext(cmd)
 	if err != nil {
 		return err
 	}
-	roles := defaultRoles()
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, roles)
+
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
 	}
 
-	rows := make([][]attribute.Value, 0, len(roles))
-	for _, role := range roles {
+	response, err := appCtx.Client.Roles.List(ctx, merchantCode)
+	if err != nil {
+		return fmt.Errorf("list roles: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(appCtx.Output, response.Items)
+	}
+
+	rows := make([][]attribute.Value, 0, len(response.Items))
+	for _, role := range response.Items {
 		rows = append(rows, []attribute.Value{
+			attribute.ValueOf(role.ID),
 			attribute.ValueOf(role.Name),
-			attribute.ValueOf(role.DisplayName),
-			attribute.ValueOf(role.Description),
+			attribute.ValueOf(roleDescription(role)),
 		})
 	}
 
-	return display.RenderTable(
-		appCtx.Output,
-		"Roles",
-		[]string{"Role", "Display Name", "Description"},
-		rows,
-	)
+	return display.RenderTableWithOptions(appCtx.Output, []string{"Role", "Name", "Description"}, rows, display.TableOptions{
+		Title:             "Roles",
+		EmptyText:         "No items to display",
+		IdentifierColumns: []int{0},
+	})
 }
 
-func defaultRoles() []role {
-	return []role{
-		{
-			Name:        "role_owner",
-			DisplayName: "Owner",
-			Description: "Full administrative access to the merchant account",
-		},
-		{
-			Name:        "role_admin",
-			DisplayName: "Admin",
-			Description: "Administrative access with some restrictions",
-		},
-		{
-			Name:        "role_employee",
-			DisplayName: "Employee",
-			Description: "Standard employee access for daily operations",
-		},
-		{
-			Name:        "role_manager",
-			DisplayName: "Manager",
-			Description: "Management access with elevated permissions",
-		},
-		{
-			Name:        "role_cashier",
-			DisplayName: "Cashier",
-			Description: "Limited access for point-of-sale operations",
-		},
+func roleDescription(role sumup.Role) string {
+	if role.Description == nil || *role.Description == "" {
+		return "-"
 	}
+
+	return *role.Description
 }
