@@ -9,7 +9,7 @@ require (
 	github.com/mergestat/timediff v0.0.4
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.11.1
-	github.com/sumup/sumup-go v0.15.0
+	github.com/sumup/sumup-go v0.16.0
 	github.com/urfave/cli/v3 v3.8.0
 	golang.org/x/term v0.42.0
 )
