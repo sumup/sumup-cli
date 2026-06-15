@@ -118,6 +118,11 @@ func NewCommand() *cli.Command {
 				ArgsUsage: "<transaction-id>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the transaction. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
+					},
+					&cli.StringFlag{
 						Name:  "amount",
 						Usage: "Optional partial refund amount in major units.",
 					},
@@ -201,6 +206,10 @@ func refundTransaction(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
 
 	body := sumup.TransactionsRefundParams{}
 	if cmd.IsSet("amount") {
@@ -211,7 +220,7 @@ func refundTransaction(ctx context.Context, cmd *cli.Command) error {
 		body.Amount = &value
 	}
 
-	if err := appCtx.Client.Transactions.Refund(ctx, transactionID, body); err != nil {
+	if err := appCtx.Client.Transactions.Refund(ctx, merchantCode, transactionID, body); err != nil {
 		return fmt.Errorf("refund transaction: %w", err)
 	}
 
@@ -312,20 +321,21 @@ func transactionsListParamsFromCommand(cmd *cli.Command) (sumup.TransactionsList
 	}
 	if cmd.IsSet("order") {
 		value := cmd.String("order")
-		params.Order = &value
+		order := sumup.TransactionsListOrder(value)
+		params.Order = &order
 	}
 	if values := cmd.StringSlice("payment-type"); len(values) > 0 {
 		params.PaymentTypes = paymentTypesFromStrings(values)
 	}
 	if values := cmd.StringSlice("status"); len(values) > 0 {
-		params.Statuses = values
+		params.Statuses = transactionStatusesFromStrings(values)
 	}
 	if cmd.IsSet("transaction-code") {
 		value := cmd.String("transaction-code")
 		params.TransactionCode = &value
 	}
 	if values := cmd.StringSlice("type"); len(values) > 0 {
-		params.Types = values
+		params.Types = transactionTypesFromStrings(values)
 	}
 	if values := cmd.StringSlice("user"); len(values) > 0 {
 		params.Users = values
@@ -343,13 +353,12 @@ func transactionLookupParamsFromCommand(cmd *cli.Command) (sumup.TransactionsGet
 		params.ID = &transactionID
 		lookupCount++
 	}
-	if value := cmd.String("internal-id"); value != "" {
-		params.InternalID = &value
-		lookupCount++
-	}
 	if value := cmd.String("transaction-code"); value != "" {
 		params.TransactionCode = &value
 		lookupCount++
+	}
+	if value := cmd.String("internal-id"); value != "" {
+		return sumup.TransactionsGetParams{}, fmt.Errorf("--internal-id is no longer supported by the current SumUp API")
 	}
 	if value := cmd.String("foreign-transaction-id"); value != "" {
 		params.ForeignTransactionID = &value
@@ -377,6 +386,30 @@ func paymentTypesFromStrings(values []string) []sumup.PaymentType {
 			continue
 		}
 		types = append(types, sumup.PaymentType(v))
+	}
+
+	return types
+}
+
+func transactionStatusesFromStrings(values []string) []sumup.TransactionsListStatusesItem {
+	statuses := make([]sumup.TransactionsListStatusesItem, 0, len(values))
+	for _, v := range values {
+		if v == "" {
+			continue
+		}
+		statuses = append(statuses, sumup.TransactionsListStatusesItem(v))
+	}
+
+	return statuses
+}
+
+func transactionTypesFromStrings(values []string) []sumup.TransactionsListTypesItem {
+	types := make([]sumup.TransactionsListTypesItem, 0, len(values))
+	for _, v := range values {
+		if v == "" {
+			continue
+		}
+		types = append(types, sumup.TransactionsListTypesItem(v))
 	}
 
 	return types

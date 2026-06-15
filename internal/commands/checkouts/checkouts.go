@@ -83,6 +83,10 @@ func NewCommand() *cli.Command {
 						Name:  "purpose",
 						Usage: "Optional purpose for the checkout.",
 					},
+					&cli.BoolFlag{
+						Name:  "hosted-checkout",
+						Usage: "Enable the SumUp-hosted checkout page and return its URL.",
+					},
 				},
 			},
 			{
@@ -229,6 +233,9 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		purpose := sumup.CheckoutCreateRequestPurpose(value)
 		body.Purpose = &purpose
 	}
+	if cmd.Bool("hosted-checkout") {
+		body.HostedCheckout = &sumup.HostedCheckout{Enabled: true}
+	}
 
 	checkout, err := appCtx.Client.Checkouts.Create(ctx, body)
 	if err != nil {
@@ -245,6 +252,7 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		details.Add("Status", attribute.Styled(string(*checkout.Status)))
 	}
 	details.AddWhen(checkout.Description != nil && *checkout.Description != "", attribute.Attribute("Description", attribute.Styled(*checkout.Description)))
+	details.AddWhen(checkout.HostedCheckoutURL != nil && *checkout.HostedCheckoutURL != "", attribute.Attribute("Hosted Checkout URL", attribute.Styled(*checkout.HostedCheckoutURL)))
 	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
 		JSONValue:      checkout,
 		SuccessMessage: "Checkout created",
@@ -436,6 +444,7 @@ func renderCheckout(appCtx *app.Context, checkout *sumup.CheckoutSuccess) error 
 		AddOptionalString("Merchant", checkout.MerchantCode).
 		AddOptionalString("Merchant Name", checkout.MerchantName).
 		AddOptionalString("Description", checkout.Description).
+		AddOptionalString("Hosted Checkout URL", checkout.HostedCheckoutURL).
 		AddOptionalString("Status", enumString(checkout.Status)).
 		AddOptionalString("Transaction ID", checkout.TransactionID).
 		AddOptionalString("Transaction Code", checkout.TransactionCode).
