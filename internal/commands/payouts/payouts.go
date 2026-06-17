@@ -86,7 +86,8 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 		if order != "asc" && order != "desc" {
 			return fmt.Errorf("invalid order %q, expected asc or desc", value)
 		}
-		params.Order = &order
+		typedOrder := sumup.PayoutsListOrder(order)
+		params.Order = &typedOrder
 	}
 
 	payoutList, err := appCtx.Client.Payouts.List(ctx, merchantCode, params)
@@ -101,19 +102,16 @@ func listPayouts(ctx context.Context, cmd *cli.Command) error {
 	payouts := util.SliceOrEmpty(payoutList)
 	rows := make([][]attribute.Value, 0, len(payouts))
 	for _, payout := range payouts {
-		fee := attribute.OptionalValue(payout.Fee)
-		if payout.Fee != nil {
-			fee = attribute.ValueOf(fmt.Sprintf("%.2f", *payout.Fee))
-		}
+		fee := attribute.ValueOf(fmt.Sprintf("%.2f", payout.Fee))
 
 		rows = append(rows, []attribute.Value{
-			attribute.OptionalValue(payout.ID),
-			attribute.OptionalValue(payout.Date),
+			attribute.ValueOf(payout.ID),
+			attribute.ValueOf(payout.Date),
 			attribute.ValueOf(payoutAmount(payout)),
 			fee,
-			attribute.OptionalValue(payout.Status),
-			attribute.OptionalValue(payout.Type),
-			attribute.OptionalStringValue(payout.Reference),
+			attribute.ValueOf(payout.Status),
+			attribute.ValueOf(payout.Type),
+			attribute.ValueOf(payout.Reference),
 		})
 	}
 
@@ -133,11 +131,8 @@ func parseDateArg(value string) (datetime.Date, error) {
 }
 
 func payoutAmount(payout sumup.FinancialPayout) string {
-	if payout.Amount == nil {
-		return "-"
+	if payout.Currency == "" {
+		return fmt.Sprintf("%.2f", payout.Amount)
 	}
-	if payout.Currency == nil || *payout.Currency == "" {
-		return fmt.Sprintf("%.2f", *payout.Amount)
-	}
-	return fmt.Sprintf("%.2f %s", *payout.Amount, *payout.Currency)
+	return fmt.Sprintf("%.2f %s", payout.Amount, payout.Currency)
 }

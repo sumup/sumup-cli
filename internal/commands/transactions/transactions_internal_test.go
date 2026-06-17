@@ -30,7 +30,7 @@ func TestTransactionsListParamsFromCommand(t *testing.T) {
 		require.NotNil(t, params.ChangesSince)
 		assert.True(t, params.ChangesSince.Equal(time.Date(2026, time.March, 26, 12, 0, 0, 0, time.UTC)))
 		assert.Equal(t, []sumup.PaymentType{sumup.PaymentType("CARD")}, params.PaymentTypes)
-		assert.Equal(t, []string{"SUCCESSFUL"}, params.Statuses)
+		assert.Equal(t, []sumup.TransactionsListStatusesItem{sumup.TransactionsListStatusesItem("SUCCESSFUL")}, params.Statuses)
 		assert.Equal(t, []string{"user@example.com"}, params.Users)
 	})
 
@@ -65,6 +65,14 @@ func TestTransactionLookupParamsFromCommand(t *testing.T) {
 		_, err := transactionLookupParamsFromCommand(cmd)
 		require.Error(t, err)
 	})
+
+	t.Run("rejects unsupported internal ID lookup", func(t *testing.T) {
+		cmd := runCommandForTest(t, []string{"sumup", "--internal-id", "internal-123"}, getTransactionFlags())
+
+		_, err := transactionLookupParamsFromCommand(cmd)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--internal-id is no longer supported")
+	})
 }
 
 func TestPaymentTypesFromStrings(t *testing.T) {
@@ -72,6 +80,22 @@ func TestPaymentTypesFromStrings(t *testing.T) {
 		got := paymentTypesFromStrings([]string{"CARD", "", "CASH"})
 		assert.Equal(t, []sumup.PaymentType{sumup.PaymentType("CARD"), sumup.PaymentType("CASH")}, got)
 	})
+}
+
+func TestTransactionStatusesFromStrings(t *testing.T) {
+	got := transactionStatusesFromStrings([]string{"SUCCESSFUL", "", "FAILED"})
+	assert.Equal(t, []sumup.TransactionsListStatusesItem{
+		sumup.TransactionsListStatusesItem("SUCCESSFUL"),
+		sumup.TransactionsListStatusesItem("FAILED"),
+	}, got)
+}
+
+func TestTransactionTypesFromStrings(t *testing.T) {
+	got := transactionTypesFromStrings([]string{"PAYMENT", "", "REFUND"})
+	assert.Equal(t, []sumup.TransactionsListTypesItem{
+		sumup.TransactionsListTypesItem("PAYMENT"),
+		sumup.TransactionsListTypesItem("REFUND"),
+	}, got)
 }
 
 func listTransactionsFlags() []cli.Flag {

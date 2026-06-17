@@ -405,7 +405,7 @@ func readerStatus(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	response, err := appCtx.Client.Readers.GetStatus(ctx, merchantCode, readerID, sumup.ReadersGetStatusParams{})
+	response, err := appCtx.Client.Readers.GetStatus(ctx, merchantCode, readerID)
 	if err != nil {
 		return fmt.Errorf("get reader status: %w", err)
 	}
