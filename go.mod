@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	charm.land/bubbles/v2 v2.1.0
 	charm.land/bubbletea/v2 v2.0.7
-	charm.land/lipgloss/v2 v2.0.4
+	charm.land/lipgloss/v2 v2.0.5
 	github.com/mergestat/timediff v0.0.4
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.11.1
