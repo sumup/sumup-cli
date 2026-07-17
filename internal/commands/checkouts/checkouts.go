@@ -2,6 +2,7 @@ package checkouts
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 	sumup "github.com/sumup/sumup-go"
 	"github.com/sumup/sumup-go/datetime"
+	"github.com/sumup/sumup-go/nullable"
 
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
@@ -80,6 +82,10 @@ func NewCommand() *cli.Command {
 						Usage: "Attach the checkout to an existing customer.",
 					},
 					&cli.StringFlag{
+						Name:  "valid-until",
+						Usage: "Expiration timestamp in RFC3339 format.",
+					},
+					&cli.StringFlag{
 						Name:  "purpose",
 						Usage: "Optional purpose for the checkout.",
 					},
@@ -96,10 +102,67 @@ func NewCommand() *cli.Command {
 				ArgsUsage: "<checkout-id>",
 			},
 			{
+				Name:      "apple-pay-session",
+				Usage:     "Create an Apple Pay merchant session for a checkout.",
+				Action:    createApplePaySession,
+				ArgsUsage: "<checkout-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "context",
+						Usage:    "Hostname requesting the Apple Pay session.",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "target",
+						Usage:    "Apple Pay validation URL from the browser.",
+						Required: true,
+					},
+				},
+			},
+			{
 				Name:      "get",
 				Usage:     "Get a checkout by ID.",
 				Action:    getCheckout,
 				ArgsUsage: "<checkout-id>",
+			},
+			{
+				Name:  "update",
+				Usage: "Update a checkout by ID.",
+				Description: `Examples:
+  sumup checkouts update checkout-123 --description "Updated ticket"
+  sumup checkouts update checkout-123 --amount 29.99 --currency EUR --valid-until 2026-07-12T15:04:05Z`,
+				Action:    updateCheckout,
+				ArgsUsage: "<checkout-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "reference",
+						Usage: "Updated checkout reference.",
+					},
+					&cli.StringFlag{
+						Name:  "amount",
+						Usage: "Updated amount to be charged.",
+					},
+					&cli.StringFlag{
+						Name:  "currency",
+						Usage: fmt.Sprintf("Updated checkout currency. Supported: %s", strings.Join(currency.Supported(), ", ")),
+					},
+					&cli.StringFlag{
+						Name:  "description",
+						Usage: "Updated short description.",
+					},
+					&cli.StringFlag{
+						Name:  "customer-id",
+						Usage: "Updated customer ID.",
+					},
+					&cli.StringFlag{
+						Name:  "valid-until",
+						Usage: "Updated expiration timestamp in RFC3339 format.",
+					},
+					&cli.BoolFlag{
+						Name:  "clear-valid-until",
+						Usage: "Clear the checkout expiration timestamp.",
+					},
+				},
 			},
 			{
 				Name:   "payment-methods",
@@ -229,6 +292,13 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 	if value := cmd.String("customer-id"); value != "" {
 		body.CustomerID = &value
 	}
+	if value := cmd.String("valid-until"); value != "" {
+		validUntil, err := parseRFC3339Time(value, "valid-until")
+		if err != nil {
+			return err
+		}
+		body.ValidUntil = nullable.Value(validUntil)
+	}
 	if value := cmd.String("purpose"); value != "" {
 		purpose := sumup.CheckoutCreateRequestPurpose(value)
 		body.Purpose = &purpose
@@ -242,21 +312,10 @@ func createCheckout(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("create checkout: %w", err)
 	}
 
-	details := display.NewDetailsBuilder()
-	if checkout.ID != nil {
-		details.AddID(*checkout.ID)
-	}
-	details.Add("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "N/A")))
-	details.Add("Amount", attribute.Styled(currency.FormatPointers(checkout.Amount, checkout.Currency)))
-	if checkout.Status != nil {
-		details.Add("Status", attribute.Styled(string(*checkout.Status)))
-	}
-	details.AddWhen(checkout.Description != nil && *checkout.Description != "", attribute.Attribute("Description", attribute.Styled(*checkout.Description)))
-	details.AddWhen(checkout.HostedCheckoutURL != nil && *checkout.HostedCheckoutURL != "", attribute.Attribute("Hosted Checkout URL", attribute.Styled(*checkout.HostedCheckoutURL)))
 	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
 		JSONValue:      checkout,
 		SuccessMessage: "Checkout created",
-		Details:        details.Pairs(),
+		Details:        checkoutMutationDetails(appCtx, checkout),
 	})
 }
 
@@ -274,24 +333,37 @@ func deactivateCheckout(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("deactivate checkout: %w", err)
 	}
 
-	details := display.NewDetailsBuilder()
-	if checkout.ID != nil {
-		details.AddID(*checkout.ID)
-	}
-	details.Add("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "N/A")))
-	if checkout.Status != nil {
-		details.Add("Status", attribute.Styled(string(*checkout.Status)))
-	}
-	if checkout.ValidUntil != nil {
-		if validUntil := checkout.ValidUntil.Value(); validUntil != nil {
-			details.Add("Valid Until", attribute.Styled(util.TimeOrDash(appCtx, validUntil)))
-		}
-	}
 	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
 		JSONValue:      checkout,
 		SuccessMessage: "Checkout deactivated",
-		Details:        details.Pairs(),
+		Details:        checkoutMutationDetails(appCtx, checkout),
 	})
+}
+
+func createApplePaySession(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	checkoutID, err := util.RequireSingleArg(cmd, "checkout ID")
+	if err != nil {
+		return err
+	}
+
+	body := sumup.CheckoutsCreateApplePaySessionParams{
+		Context: cmd.String("context"),
+		Target:  cmd.String("target"),
+	}
+	session, err := appCtx.Client.Checkouts.CreateApplePaySession(ctx, checkoutID, body)
+	if err != nil {
+		return fmt.Errorf("create Apple Pay session: %w", err)
+	}
+	if session == nil {
+		return nil
+	}
+
+	rawSession := json.RawMessage(*session)
+	return display.PrintJSON(appCtx.Output, rawSession)
 }
 
 func getCheckout(ctx context.Context, cmd *cli.Command) error {
@@ -314,6 +386,85 @@ func getCheckout(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return renderCheckout(appCtx, checkout)
+}
+
+func updateCheckout(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	checkoutID, err := util.RequireSingleArg(cmd, "checkout ID")
+	if err != nil {
+		return err
+	}
+
+	body := sumup.CheckoutsUpdateParams{}
+	changedCount := 0
+	if cmd.IsSet("reference") {
+		value := cmd.String("reference")
+		body.CheckoutReference = &value
+		changedCount++
+	}
+	var parsedCurrency sumup.Currency
+	if cmd.IsSet("currency") {
+		parsedCurrency, err = currency.Parse(cmd.String("currency"))
+		if err != nil {
+			return err
+		}
+		body.Currency = &parsedCurrency
+		changedCount++
+	}
+	if cmd.IsSet("amount") {
+		var amount float32
+		if body.Currency != nil {
+			amount, err = currency.ParseMajorUnitsForCurrency32(cmd.String("amount"), *body.Currency)
+		} else {
+			amount, err = currency.ParseMajorUnits32(cmd.String("amount"))
+		}
+		if err != nil {
+			return err
+		}
+		body.Amount = &amount
+		changedCount++
+	}
+	if cmd.IsSet("description") {
+		value := cmd.String("description")
+		body.Description = &value
+		changedCount++
+	}
+	if cmd.IsSet("customer-id") {
+		value := cmd.String("customer-id")
+		body.CustomerID = &value
+		changedCount++
+	}
+	if cmd.Bool("clear-valid-until") && cmd.String("valid-until") != "" {
+		return fmt.Errorf("--clear-valid-until cannot be used with --valid-until")
+	}
+	if cmd.Bool("clear-valid-until") {
+		body.ValidUntil = nullable.Null[time.Time]()
+		changedCount++
+	} else if value := cmd.String("valid-until"); value != "" {
+		validUntil, err := parseRFC3339Time(value, "valid-until")
+		if err != nil {
+			return err
+		}
+		body.ValidUntil = nullable.Value(validUntil)
+		changedCount++
+	}
+	if changedCount == 0 {
+		return fmt.Errorf("no update fields provided")
+	}
+
+	checkout, err := appCtx.Client.Checkouts.Update(ctx, checkoutID, body)
+	if err != nil {
+		return fmt.Errorf("update checkout: %w", err)
+	}
+
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      checkout,
+		SuccessMessage: "Checkout updated",
+		Details:        checkoutMutationDetails(appCtx, checkout),
+	})
 }
 
 func listPaymentMethods(ctx context.Context, cmd *cli.Command) error {
@@ -452,6 +603,29 @@ func renderCheckout(appCtx *app.Context, checkout *sumup.CheckoutSuccess) error 
 	return details.Render(appCtx.Output)
 }
 
+func checkoutMutationDetails(appCtx *app.Context, checkout *sumup.Checkout) []attribute.KeyValue {
+	details := display.NewDetailsBuilder()
+	if checkout == nil {
+		return details.Pairs()
+	}
+	if checkout.ID != nil {
+		details.AddID(*checkout.ID)
+	}
+	details.
+		Add("Reference", attribute.Styled(util.StringOrDefault(checkout.CheckoutReference, "N/A"))).
+		Add("Amount", attribute.Styled(currency.FormatPointers(checkout.Amount, checkout.Currency))).
+		AddOptionalString("Merchant", checkout.MerchantCode).
+		AddOptionalString("Description", checkout.Description).
+		AddOptionalString("Hosted Checkout URL", checkout.HostedCheckoutURL).
+		AddOptionalString("Status", enumString(checkout.Status))
+	if checkout.ValidUntil != nil {
+		if validUntil := checkout.ValidUntil.Value(); validUntil != nil {
+			details.Add("Valid Until", attribute.Styled(util.TimeOrDash(appCtx, validUntil)))
+		}
+	}
+	return details.Pairs()
+}
+
 func checkoutPersonalDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails, int, error) {
 	details := &sumup.PersonalDetails{}
 	changedCount := 0
@@ -490,6 +664,14 @@ func checkoutPersonalDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails,
 		return nil, 0, nil
 	}
 	return details, changedCount, nil
+}
+
+func parseRFC3339Time(value string, label string) (time.Time, error) {
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid %s %q: expected RFC3339 timestamp: %w", label, value, err)
+	}
+	return parsed, nil
 }
 
 func enumString[T ~string](value *T) *string {
