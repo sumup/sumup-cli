@@ -39,6 +39,11 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Verify generated code
+        run: |
+          make generate
+          git diff --exit-code -- internal/apicommands/catalog.gen.go
+
       - name: Test
         run: go test -v -failfast -race -timeout 10m ./...
 
