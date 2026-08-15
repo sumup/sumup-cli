@@ -109,10 +109,10 @@ Run the generator after updating `sumup-go`:
 make generate
 ```
 
-[`internal/commands/operations.go`](internal/commands/operations.go) maps CLI
-command paths to generated OpenAPI operation IDs. Tests enforce parity between
-the pinned SDK, the generated catalog, and the CLI command tree, so an SDK
-upgrade fails CI until every new endpoint has a corresponding command.
+Each API leaf binds its generated OpenAPI operation ID directly in the command
+definition. Tests enforce a one-to-one relationship between the pinned SDK,
+the generated catalog, and the CLI command tree, so an SDK upgrade fails CI
+until every new endpoint has exactly one corresponding command.
 
 ### Developer portal code samples
 

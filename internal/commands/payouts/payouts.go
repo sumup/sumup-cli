@@ -11,6 +11,7 @@ import (
 	sumup "github.com/sumup/sumup-go"
 	"github.com/sumup/sumup-go/datetime"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
@@ -22,7 +23,7 @@ func NewCommand() *cli.Command {
 		Name:  "payouts",
 		Usage: "Commands for listing merchant payouts.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("ListPayoutsV1", &cli.Command{
 				Name:   "list",
 				Usage:  "List payouts for a merchant.",
 				Action: listPayouts,
@@ -51,7 +52,7 @@ func NewCommand() *cli.Command {
 						Usage: "Sort payouts in ascending or descending order (asc, desc).",
 					},
 				},
-			},
+			}),
 		},
 	}
 }

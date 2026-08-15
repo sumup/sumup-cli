@@ -10,6 +10,7 @@ import (
 
 	sumup "github.com/sumup/sumup-go"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
@@ -21,7 +22,7 @@ func NewCommand() *cli.Command {
 		Name:  "receipts",
 		Usage: "Commands for retrieving transaction receipts.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("GetReceipt", &cli.Command{
 				Name:      "get",
 				Usage:     "Get a receipt by transaction ID.",
 				Action:    getReceipt,
@@ -37,7 +38,7 @@ func NewCommand() *cli.Command {
 						Usage: "Transaction event ID for refund sumup.",
 					},
 				},
-			},
+			}),
 		},
 	}
 }

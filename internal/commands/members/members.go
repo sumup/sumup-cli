@@ -11,6 +11,7 @@ import (
 	sumup "github.com/sumup/sumup-go"
 	"github.com/sumup/sumup-go/secret"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
@@ -23,7 +24,7 @@ func NewCommand() *cli.Command {
 		Name:  "members",
 		Usage: "Commands related to merchant members.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("ListMerchantMembers", &cli.Command{
 				Name:   "list",
 				Usage:  "List members attached to a merchant resource.",
 				Action: listMembers,
@@ -62,8 +63,8 @@ func NewCommand() *cli.Command {
 						Usage: "Skip counting results to speed up pagination.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("CreateMerchantMember", &cli.Command{
 				Name:   "create",
 				Usage:  "Create a merchant member.",
 				Action: createMember,
@@ -93,8 +94,8 @@ func NewCommand() *cli.Command {
 						Usage: "Nickname for the member.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("GetMerchantMember", &cli.Command{
 				Name:      "get",
 				Usage:     "Get a member from the merchant account.",
 				Action:    getMember,
@@ -106,8 +107,8 @@ func NewCommand() *cli.Command {
 						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("UpdateMerchantMember", &cli.Command{
 				Name:      "update",
 				Usage:     "Update a member in the merchant account.",
 				Action:    updateMember,
@@ -131,25 +132,8 @@ func NewCommand() *cli.Command {
 						Usage: "Password for managed users.",
 					},
 				},
-			},
-			{
-				Name:   "invite",
-				Usage:  "Invite a user to become a member of the merchant account.",
-				Action: inviteMember,
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:    "merchant-code",
-						Usage:   "Merchant code to invite member to. Falls back to context.",
-						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
-					},
-					&cli.StringFlag{
-						Name:     "email",
-						Usage:    "Email of the user to invite.",
-						Required: true,
-					},
-				},
-			},
-			{
+			}),
+			apicommands.Bind("DeleteMerchantMember", &cli.Command{
 				Name:      "delete",
 				Usage:     "Delete a member from the merchant account.",
 				Action:    deleteMember,
@@ -161,7 +145,7 @@ func NewCommand() *cli.Command {
 						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
-			},
+			}),
 		},
 	}
 }
@@ -271,36 +255,6 @@ func createMember(ctx context.Context, cmd *cli.Command) error {
 	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
 		JSONValue:      response,
 		SuccessMessage: "Member created",
-		Details: []attribute.KeyValue{
-			attribute.ID(response.ID),
-		},
-	})
-}
-
-func inviteMember(ctx context.Context, cmd *cli.Command) error {
-	appCtx, err := app.GetAppContext(cmd)
-	if err != nil {
-		return err
-	}
-
-	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
-	if err != nil {
-		return err
-	}
-
-	body := sumup.MembersCreateParams{
-		Email: cmd.String("email"),
-		Roles: []string{"role_employee"},
-	}
-
-	response, err := appCtx.Client.Members.Create(ctx, merchantCode, body)
-	if err != nil {
-		return fmt.Errorf("invite member: %w", err)
-	}
-
-	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
-		JSONValue:      response,
-		SuccessMessage: "Member invited",
 		Details: []attribute.KeyValue{
 			attribute.ID(response.ID),
 		},

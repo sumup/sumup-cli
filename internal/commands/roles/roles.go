@@ -10,6 +10,7 @@ import (
 
 	sumup "github.com/sumup/sumup-go"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
@@ -22,15 +23,15 @@ func NewCommand() *cli.Command {
 		Name:  "roles",
 		Usage: "Commands for managing roles.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("ListMerchantRoles", &cli.Command{
 				Name:   "list",
 				Usage:  "List available roles.",
 				Action: listRoles,
 				Flags: []cli.Flag{
 					merchantCodeFlag("Merchant code whose roles should be listed. Falls back to context."),
 				},
-			},
-			{
+			}),
+			apicommands.Bind("CreateMerchantRole", &cli.Command{
 				Name:   "create",
 				Usage:  "Create a custom role.",
 				Action: createRole,
@@ -51,8 +52,8 @@ func NewCommand() *cli.Command {
 						Usage: "User-defined role description.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("GetMerchantRole", &cli.Command{
 				Name:      "get",
 				Usage:     "Get a custom role by ID.",
 				Action:    getRole,
@@ -60,8 +61,8 @@ func NewCommand() *cli.Command {
 				Flags: []cli.Flag{
 					merchantCodeFlag("Merchant code that owns the role. Falls back to context."),
 				},
-			},
-			{
+			}),
+			apicommands.Bind("UpdateMerchantRole", &cli.Command{
 				Name:      "update",
 				Usage:     "Update a custom role.",
 				Action:    updateRole,
@@ -81,8 +82,8 @@ func NewCommand() *cli.Command {
 						Usage: "Updated role description.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("DeleteMerchantRole", &cli.Command{
 				Name:      "delete",
 				Usage:     "Delete a custom role.",
 				Action:    deleteRole,
@@ -90,7 +91,7 @@ func NewCommand() *cli.Command {
 				Flags: []cli.Flag{
 					merchantCodeFlag("Merchant code that owns the role. Falls back to context."),
 				},
-			},
+			}),
 		},
 	}
 }

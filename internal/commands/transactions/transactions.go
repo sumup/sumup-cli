@@ -10,6 +10,7 @@ import (
 
 	sumup "github.com/sumup/sumup-go"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/currency"
@@ -22,7 +23,7 @@ func NewCommand() *cli.Command {
 		Name:  "transactions",
 		Usage: "Commands for listing, retrieving, and refunding transactions.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("ListTransactionsV2.1", &cli.Command{
 				Name:   "list",
 				Usage:  "List transactions for a merchant.",
 				Action: listTransactions,
@@ -81,8 +82,8 @@ func NewCommand() *cli.Command {
 						Usage: "Filter by user email. May be specified multiple times.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("GetTransactionV2.1", &cli.Command{
 				Name:      "get",
 				Usage:     "Get a specific transaction.",
 				Action:    getTransaction,
@@ -110,8 +111,8 @@ func NewCommand() *cli.Command {
 						Usage: "Lookup by client transaction ID.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("RefundTransaction", &cli.Command{
 				Name:      "refund",
 				Usage:     "Refund a transaction fully or partially.",
 				Action:    refundTransaction,
@@ -127,7 +128,7 @@ func NewCommand() *cli.Command {
 						Usage: "Optional partial refund amount in major units.",
 					},
 				},
-			},
+			}),
 		},
 	}
 }

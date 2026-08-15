@@ -103,7 +103,7 @@ func TestGeneratedInvocationsReachAPITransport(t *testing.T) {
 		t.Run(operation.ID, func(t *testing.T) {
 			resourceCommands := commands.All()
 			commandsByOperation := boundCommandsByOperation(resourceCommands)
-			bound, err := canonicalCommand(operation.ID, commandsByOperation[operation.ID])
+			bound, err := commandForOperation(operation.ID, commandsByOperation[operation.ID])
 			require.NoError(t, err)
 			invocation, err := buildInvocation(bound)
 			require.NoError(t, err)
@@ -135,12 +135,12 @@ func TestGeneratedInvocationsReachAPITransport(t *testing.T) {
 	}
 }
 
-func TestCanonicalCommandRequiresExplicitDuplicateSelection(t *testing.T) {
+func TestCommandForOperationRejectsDuplicates(t *testing.T) {
 	t.Parallel()
 
-	_, err := canonicalCommand("ExampleOperation", []boundCommand{{path: "examples first"}, {path: "examples second"}})
+	_, err := commandForOperation("ExampleOperation", []boundCommand{{path: "examples first"}, {path: "examples second"}})
 
-	require.EqualError(t, err, `OpenAPI operation "ExampleOperation" has multiple CLI commands (examples first, examples second); select a canonical command`)
+	require.EqualError(t, err, `OpenAPI operation "ExampleOperation" has multiple CLI commands (examples first, examples second)`)
 }
 
 func sampleByID(t *testing.T, samples []Sample, id string) Sample {

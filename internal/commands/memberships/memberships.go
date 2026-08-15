@@ -9,6 +9,7 @@ import (
 
 	sumup "github.com/sumup/sumup-go"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
@@ -20,7 +21,7 @@ func NewCommand() *cli.Command {
 		Name:  "memberships",
 		Usage: "Commands related to sumup.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("ListMemberships", &cli.Command{
 				Name:   "list",
 				Usage:  "List memberships for the authenticated user.",
 				Action: listMemberships,
@@ -54,7 +55,7 @@ func NewCommand() *cli.Command {
 						Usage: "Filter memberships to sandbox resources only.",
 					},
 				},
-			},
+			}),
 		},
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/sumup/sumup-go/datetime"
 	"github.com/sumup/sumup-go/nullable"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/currency"
@@ -26,7 +27,7 @@ func NewCommand() *cli.Command {
 		Name:  "checkouts",
 		Usage: "Commands related to hosted sumup.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("ListCheckouts", &cli.Command{
 				Name:   "list",
 				Usage:  "List checkout resources.",
 				Action: listCheckouts,
@@ -36,8 +37,8 @@ func NewCommand() *cli.Command {
 						Usage: "Filter results by checkout reference.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("CreateCheckout", &cli.Command{
 				Name:  "create",
 				Usage: "Create a new checkout resource.",
 				Description: `Examples:
@@ -94,14 +95,14 @@ func NewCommand() *cli.Command {
 						Usage: "Enable the SumUp-hosted checkout page and return its URL.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("DeactivateCheckout", &cli.Command{
 				Name:      "deactivate",
 				Usage:     "Deactivate a checkout by ID.",
 				Action:    deactivateCheckout,
 				ArgsUsage: "<checkout-id>",
-			},
-			{
+			}),
+			apicommands.Bind("CreateApplePaySession", &cli.Command{
 				Name:      "apple-pay-session",
 				Usage:     "Create an Apple Pay merchant session for a checkout.",
 				Action:    createApplePaySession,
@@ -118,14 +119,14 @@ func NewCommand() *cli.Command {
 						Required: true,
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("GetCheckout", &cli.Command{
 				Name:      "get",
 				Usage:     "Get a checkout by ID.",
 				Action:    getCheckout,
 				ArgsUsage: "<checkout-id>",
-			},
-			{
+			}),
+			apicommands.Bind("UpdateCheckout", &cli.Command{
 				Name:  "update",
 				Usage: "Update a checkout by ID.",
 				Description: `Examples:
@@ -163,8 +164,8 @@ func NewCommand() *cli.Command {
 						Usage: "Clear the checkout expiration timestamp.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("GetPaymentMethods", &cli.Command{
 				Name:   "payment-methods",
 				Usage:  "List available payment methods for a merchant.",
 				Action: listPaymentMethods,
@@ -183,8 +184,8 @@ func NewCommand() *cli.Command {
 						Usage: fmt.Sprintf("Optional currency filter. Supported: %s", strings.Join(currency.Supported(), ", ")),
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("ProcessCheckout", &cli.Command{
 				Name:      "process",
 				Usage:     "Process a checkout.",
 				Action:    processCheckout,
@@ -205,7 +206,7 @@ func NewCommand() *cli.Command {
 					&cli.StringFlag{Name: "tax-id", Usage: "Customer tax ID."},
 					&cli.StringFlag{Name: "birth-date", Usage: "Customer birth date in YYYY-MM-DD format."},
 				},
-			},
+			}),
 		},
 	}
 }

@@ -19,7 +19,7 @@ import (
 
 // All returns the list of resource commands exposed by the CLI.
 func All() []*cli.Command {
-	return bindOpenAPIOperations([]*cli.Command{
+	return []*cli.Command{
 		checkouts.NewCommand(),
 		context.NewCommand(),
 		customers.NewCommand(),
@@ -32,5 +32,5 @@ func All() []*cli.Command {
 		roles.NewCommand(),
 		transactions.NewCommand(),
 		version.NewCommand(),
-	})
+	}
 }

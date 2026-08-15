@@ -49,7 +49,7 @@ func TestCommandsCoverOpenAPICatalog(t *testing.T) {
 		apiGroups[strings.ToLower(operation.Client)] = struct{}{}
 	}
 
-	covered := make(map[string]struct{})
+	commandsByOperation := make(map[string][]string)
 	unbound := make([]string, 0)
 	walkLeafCommands(All(), func(path string, command *cli.Command) {
 		group, _, _ := strings.Cut(path, " ")
@@ -62,19 +62,30 @@ func TestCommandsCoverOpenAPICatalog(t *testing.T) {
 			unbound = append(unbound, path)
 			return
 		}
-		covered[operationID] = struct{}{}
+		commandsByOperation[operationID] = append(commandsByOperation[operationID], path)
 	})
 	slices.Sort(unbound)
 
 	missing := make([]string, 0)
 	for _, operation := range apicommands.Operations {
-		if _, ok := covered[operation.ID]; !ok {
+		if _, ok := commandsByOperation[operation.ID]; !ok {
 			missing = append(missing, operation.Client+"."+operation.SDKMethod+" ("+operation.ID+")")
 		}
 	}
 	slices.Sort(missing)
 
+	duplicates := make([]string, 0)
+	for operationID, paths := range commandsByOperation {
+		if len(paths) < 2 {
+			continue
+		}
+		slices.Sort(paths)
+		duplicates = append(duplicates, operationID+": "+strings.Join(paths, ", "))
+	}
+	slices.Sort(duplicates)
+
 	require.Empty(t, unbound, "API commands without an OpenAPI operation binding")
+	require.Empty(t, duplicates, "OpenAPI operations exposed by more than one CLI command")
 	assert.Empty(t, missing, "SDK operations without a CLI command")
 }
 
