@@ -69,13 +69,6 @@ type sampleFlag struct {
 
 var argumentPattern = regexp.MustCompile(`[<\[]([a-z0-9-]+)[>\]]`)
 
-// canonicalCommandPaths resolves operations exposed through more than one CLI
-// command. CreateMerchantMember is also used by the convenience invite flow,
-// while the full create command is the canonical portal example.
-var canonicalCommandPaths = map[string]string{
-	"CreateMerchantMember": "members create",
-}
-
 // optionalSampleFlags adds a representative field where an otherwise valid
 // command would not show what a create or update request changes.
 var optionalSampleFlags = map[string]map[string]string{
@@ -140,7 +133,7 @@ func Generate(cliVersion string) (*Catalog, error) {
 	commandsByOperation := boundCommandsByOperation(commands.All())
 	samples := make([]Sample, 0, len(apicommands.Operations))
 	for _, operation := range apicommands.Operations {
-		command, err := canonicalCommand(operation.ID, commandsByOperation[operation.ID])
+		command, err := commandForOperation(operation.ID, commandsByOperation[operation.ID])
 		if err != nil {
 			return nil, err
 		}
@@ -199,7 +192,7 @@ func boundCommandsByOperation(resourceCommands []*cli.Command) map[string][]boun
 	return result
 }
 
-func canonicalCommand(operationID string, candidates []boundCommand) (boundCommand, error) {
+func commandForOperation(operationID string, candidates []boundCommand) (boundCommand, error) {
 	switch len(candidates) {
 	case 0:
 		return boundCommand{}, fmt.Errorf("OpenAPI operation %q has no CLI command", operationID)
@@ -207,21 +200,12 @@ func canonicalCommand(operationID string, candidates []boundCommand) (boundComma
 		return candidates[0], nil
 	}
 
-	preferredPath, ok := canonicalCommandPaths[operationID]
-	if !ok {
-		paths := make([]string, 0, len(candidates))
-		for _, candidate := range candidates {
-			paths = append(paths, candidate.path)
-		}
-		slices.Sort(paths)
-		return boundCommand{}, fmt.Errorf("OpenAPI operation %q has multiple CLI commands (%s); select a canonical command", operationID, strings.Join(paths, ", "))
-	}
+	paths := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
-		if candidate.path == preferredPath {
-			return candidate, nil
-		}
+		paths = append(paths, candidate.path)
 	}
-	return boundCommand{}, fmt.Errorf("canonical CLI command %q for OpenAPI operation %q does not exist", preferredPath, operationID)
+	slices.Sort(paths)
+	return boundCommand{}, fmt.Errorf("OpenAPI operation %q has multiple CLI commands (%s)", operationID, strings.Join(paths, ", "))
 }
 
 func renderCommand(bound boundCommand) (string, error) {

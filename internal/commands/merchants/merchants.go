@@ -11,6 +11,7 @@ import (
 
 	sumup "github.com/sumup/sumup-go"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
@@ -22,7 +23,7 @@ func NewCommand() *cli.Command {
 		Name:  "merchants",
 		Usage: "Commands related to merchant accounts.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("GetMerchant", &cli.Command{
 				Name:   "get",
 				Usage:  "Get merchant information.",
 				Action: getMerchant,
@@ -30,12 +31,12 @@ func NewCommand() *cli.Command {
 					merchantCodeFlag("Merchant code to retrieve information for. Falls back to context."),
 					versionFlag(),
 				},
-			},
+			}),
 			{
 				Name:  "persons",
 				Usage: "Commands related to people associated with a merchant.",
 				Commands: []*cli.Command{
-					{
+					apicommands.Bind("ListPersons", &cli.Command{
 						Name:   "list",
 						Usage:  "List people associated with a merchant.",
 						Action: listPersons,
@@ -43,8 +44,8 @@ func NewCommand() *cli.Command {
 							merchantCodeFlag("Merchant code whose people should be listed. Falls back to context."),
 							versionFlag(),
 						},
-					},
-					{
+					}),
+					apicommands.Bind("GetPerson", &cli.Command{
 						Name:      "get",
 						Usage:     "Get a person associated with a merchant.",
 						ArgsUsage: "<person-id>",
@@ -53,7 +54,7 @@ func NewCommand() *cli.Command {
 							merchantCodeFlag("Merchant code associated with the person. Falls back to context."),
 							versionFlag(),
 						},
-					},
+					}),
 				},
 			},
 		},

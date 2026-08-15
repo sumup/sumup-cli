@@ -13,6 +13,7 @@ import (
 	sumup "github.com/sumup/sumup-go"
 	"github.com/sumup/sumup-go/nullable"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/currency"
@@ -26,7 +27,7 @@ func NewCommand() *cli.Command {
 		Name:  "readers",
 		Usage: "Commands for managing in-person readers.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("ListReaders", &cli.Command{
 				Name:   "list",
 				Usage:  "List paired readers for a merchant.",
 				Action: listReaders,
@@ -37,8 +38,8 @@ func NewCommand() *cli.Command {
 						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("CreateReader", &cli.Command{
 				Name:   "add",
 				Usage:  "Pair a new reader with the merchant account.",
 				Action: addReader,
@@ -59,8 +60,8 @@ func NewCommand() *cli.Command {
 						Required: true,
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("DeleteReader", &cli.Command{
 				Name:      "delete",
 				Usage:     "Delete a paired reader from the merchant account.",
 				Action:    deleteReader,
@@ -72,8 +73,8 @@ func NewCommand() *cli.Command {
 						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("GetReaderStatus", &cli.Command{
 				Name:      "status",
 				Usage:     "Show the last known status of a reader.",
 				Action:    readerStatus,
@@ -85,8 +86,8 @@ func NewCommand() *cli.Command {
 						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("GetReader", &cli.Command{
 				Name:      "get",
 				Usage:     "Get a paired reader.",
 				Action:    getReader,
@@ -102,8 +103,8 @@ func NewCommand() *cli.Command {
 						Usage: "Optional If-Modified-Since query value.",
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("UpdateReader", &cli.Command{
 				Name:      "update",
 				Usage:     "Update a paired reader.",
 				Action:    updateReader,
@@ -120,8 +121,8 @@ func NewCommand() *cli.Command {
 						Required: true,
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("CreateReaderTerminate", &cli.Command{
 				Name:      "terminate",
 				Usage:     "Terminate the current reader checkout.",
 				Action:    terminateCheckout,
@@ -133,8 +134,8 @@ func NewCommand() *cli.Command {
 						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
 					},
 				},
-			},
-			{
+			}),
+			apicommands.Bind("CreateReaderCheckout", &cli.Command{
 				Name:      "checkout",
 				Usage:     "Trigger a checkout on a specific reader device.",
 				Action:    readerCheckout,
@@ -197,7 +198,7 @@ func NewCommand() *cli.Command {
 						Usage: "Affiliate foreign transaction ID to attribute the transaction.",
 					},
 				},
-			},
+			}),
 		},
 	}
 }

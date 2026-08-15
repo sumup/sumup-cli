@@ -12,6 +12,7 @@ import (
 	sumup "github.com/sumup/sumup-go"
 	"github.com/sumup/sumup-go/datetime"
 
+	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/app"
 	"github.com/sumup/sumup-cli/internal/commands/util"
 	"github.com/sumup/sumup-cli/internal/display"
@@ -24,41 +25,41 @@ func NewCommand() *cli.Command {
 		Name:  "customers",
 		Usage: "Commands for managing customers.",
 		Commands: []*cli.Command{
-			{
+			apicommands.Bind("CreateCustomer", &cli.Command{
 				Name:   "create",
 				Usage:  "Create a customer.",
 				Action: createCustomer,
 				Flags:  customerDetailsFlags(),
-			},
-			{
+			}),
+			apicommands.Bind("GetCustomer", &cli.Command{
 				Name:      "get",
 				Usage:     "Get a customer by ID.",
 				Action:    getCustomer,
 				ArgsUsage: "<customer-id>",
-			},
-			{
+			}),
+			apicommands.Bind("UpdateCustomer", &cli.Command{
 				Name:      "update",
 				Usage:     "Update customer details.",
 				Action:    updateCustomer,
 				ArgsUsage: "<customer-id>",
 				Flags:     customerDetailsFlags(),
-			},
+			}),
 			{
 				Name:  "payment-instruments",
 				Usage: "Manage stored payment instruments for a customer.",
 				Commands: []*cli.Command{
-					{
+					apicommands.Bind("ListPaymentInstruments", &cli.Command{
 						Name:      "list",
 						Usage:     "List stored payment instruments for a customer.",
 						Action:    listPaymentInstruments,
 						ArgsUsage: "<customer-id>",
-					},
-					{
+					}),
+					apicommands.Bind("DeactivatePaymentInstrument", &cli.Command{
 						Name:      "deactivate",
 						Usage:     "Deactivate a stored payment instrument.",
 						Action:    deactivatePaymentInstrument,
 						ArgsUsage: "<customer-id> <token>",
-					},
+					}),
 				},
 			},
 		},

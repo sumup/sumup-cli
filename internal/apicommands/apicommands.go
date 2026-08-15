@@ -52,8 +52,9 @@ func Lookup(operationID string) (Operation, bool) {
 	return Operation{}, false
 }
 
-// Bind records which OpenAPI operation a CLI command exposes.
-func Bind(command *cli.Command, operationID string) {
+// Bind records which OpenAPI operation a CLI command exposes and returns the
+// command so the binding can live next to the command definition.
+func Bind(operationID string, command *cli.Command) *cli.Command {
 	if command == nil {
 		panic("cannot bind an OpenAPI operation to a nil command")
 	}
@@ -64,6 +65,8 @@ func Bind(command *cli.Command, operationID string) {
 		command.Metadata = make(map[string]any)
 	}
 	command.Metadata[operationIDMetadataKey] = operationID
+
+	return command
 }
 
 // OperationID returns the OpenAPI operation ID bound to a CLI command.
