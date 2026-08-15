@@ -220,7 +220,7 @@ func refundTransaction(ctx context.Context, cmd *cli.Command) error {
 		body.Amount = &value
 	}
 
-	if err := appCtx.Client.Transactions.Refund(ctx, merchantCode, transactionID, body); err != nil {
+	if _, err := appCtx.Client.Transactions.Refund(ctx, merchantCode, transactionID, body); err != nil {
 		return fmt.Errorf("refund transaction: %w", err)
 	}
 
