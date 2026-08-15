@@ -20,6 +20,16 @@ lint-fix: ## Lint go files and apply auto-fixes
 test: ## Run tests
 	go test -v -failfast -race -timeout 10m ./...
 
+.PHONY: generate
+generate: ## Generate the OpenAPI operation catalog from the pinned SDK
+	go generate ./internal/apicommands
+
+CODESAMPLES_OUT ?= code-samples.json
+
+.PHONY: generate-codesamples
+generate-codesamples: ## Generate CLI code samples for the developer portal
+	go run ./internal/cmd/generate-samples --cli-version "$(VERSION)" --out "$(CODESAMPLES_OUT)"
+
 .PHONY: vulncheck
 vulncheck: ## Check for Vulnerabilities (make sure you have the tools install: `make install-tools`)
 	govulncheck ./...

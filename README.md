@@ -96,4 +96,38 @@ sumup readers status \
   reader_42
 ```
 
+## OpenAPI command coverage
+
+The CLI keeps its user-facing command implementations handwritten, but derives
+an operation catalog from the OpenAPI document shipped with the exact
+`sumup-go` version pinned in `go.mod`. The catalog records operation IDs, SDK
+clients and methods, HTTP paths, parameters, and request-body metadata.
+
+Run the generator after updating `sumup-go`:
+
+```bash
+make generate
+```
+
+[`internal/commands/operations.go`](internal/commands/operations.go) maps CLI
+command paths to generated OpenAPI operation IDs. Tests enforce parity between
+the pinned SDK, the generated catalog, and the CLI command tree, so an SDK
+upgrade fails CI until every new endpoint has a corresponding command.
+
+### Developer portal code samples
+
+Generate a deterministic, portal-compatible JSON catalog containing one CLI
+code sample for every OpenAPI operation exposed by the CLI:
+
+```bash
+VERSION=v0.1.0 make generate-codesamples
+```
+
+The catalog is written to `code-samples.json` by default. Set
+`CODESAMPLES_OUT` to use a different path. The generated file uses the same
+versioned schema as the SDK sample catalogs and is not committed to this
+repository. Published releases automatically open or update a pull request
+that writes the catalog to `src/codesamples/cli.json` in
+`sumup/sumup-developer`.
+
 [docs-badge]: https://img.shields.io/badge/SumUp-documentation-white.svg?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgY29sb3I9IndoaXRlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgPHBhdGggZD0iTTIyLjI5IDBIMS43Qy43NyAwIDAgLjc3IDAgMS43MVYyMi4zYzAgLjkzLjc3IDEuNyAxLjcxIDEuN0gyMi4zYy45NCAwIDEuNzEtLjc3IDEuNzEtMS43MVYxLjdDMjQgLjc3IDIzLjIzIDAgMjIuMjkgMFptLTcuMjIgMTguMDdhNS42MiA1LjYyIDAgMCAxLTcuNjguMjQuMzYuMzYgMCAwIDEtLjAxLS40OWw3LjQ0LTcuNDRhLjM1LjM1IDAgMCAxIC40OSAwIDUuNiA1LjYgMCAwIDEtLjI0IDcuNjlabTEuNTUtMTEuOS03LjQ0IDcuNDVhLjM1LjM1IDAgMCAxLS41IDAgNS42MSA1LjYxIDAgMCAxIDcuOS03Ljk2bC4wMy4wM2MuMTMuMTMuMTQuMzUuMDEuNDlaIiBmaWxsPSJjdXJyZW50Q29sb3IiLz4KPC9zdmc+
