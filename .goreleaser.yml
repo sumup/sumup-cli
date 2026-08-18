@@ -105,6 +105,33 @@ archives:
 checksum:
   name_template: checksums.txt
 
+# Publishes Casks/sumup.rb to the public tap sumup/homebrew-cli.
+# Requires HOMEBREW_TAP_GITHUB_TOKEN with write access to that repository.
+homebrew_casks:
+  - name: sumup
+    ids:
+      - macos-archive
+      - linux-archive
+    repository:
+      owner: sumup
+      name: homebrew-cli
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      branch: "sumup-{{ .Version }}"
+      pull_request:
+        enabled: true
+    homepage: https://developer.sumup.com
+    description: Command line tool for interacting with SumUp APIs.
+    license: Apache-2.0
+    # Binaries are not yet notarized; clear quarantine so Gatekeeper does not
+    # block the unsigned CLI. Remove this hook once macOS signing is enabled.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/sumup"]
+          end
+    skip_upload: auto
+
 changelog:
   sort: asc
   filters:
