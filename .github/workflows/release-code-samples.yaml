@@ -97,20 +97,23 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          head_ref="sumup:${{ env.TARGET_BRANCH }}"
+          # Same-repo PRs match on branch name; owner:branch returns no results.
+          title="chore: update CLI code samples"
+          body="Updates \`${{ env.TARGET_FILE }}\` from \`${{ github.repository }}\` release \`${{ github.event.release.tag_name }}\`."
           pr_url="$(gh pr list \
             --repo "${{ env.TARGET_REPOSITORY }}" \
-            --head "$head_ref" \
+            --head "${{ env.TARGET_BRANCH }}" \
             --base main \
             --state open \
             --json url \
-            --jq '.[0].url')"
+            --jq '.[0].url // empty')"
 
           if [ -n "$pr_url" ]; then
             gh pr edit "$pr_url" \
               --repo "${{ env.TARGET_REPOSITORY }}" \
-              --title "chore: update CLI code samples" \
-              --body "Updates \`${{ env.TARGET_FILE }}\` from \`${{ github.repository }}\` release \`${{ github.event.release.tag_name }}\`."
+              --title "$title" \
+              --body "$body"
+            echo "Updated $pr_url"
             exit 0
           fi
 
@@ -118,5 +121,5 @@ jobs:
             --repo "${{ env.TARGET_REPOSITORY }}" \
             --base main \
             --head "${{ env.TARGET_BRANCH }}" \
-            --title "chore: update CLI code samples" \
-            --body "Updates \`${{ env.TARGET_FILE }}\` from \`${{ github.repository }}\` release \`${{ github.event.release.tag_name }}\`."
+            --title "$title" \
+            --body "$body"
