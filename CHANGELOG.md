@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/sumup/sumup-cli/compare/v0.3.0...v0.3.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **cd:** publish releases via draft for immutable GitHub releases ([#124](https://github.com/sumup/sumup-cli/issues/124)) ([8d2684e](https://github.com/sumup/sumup-cli/commit/8d2684ed06f3582ecc90a9589303f7fd6530732b))
+
 ## [0.3.0](https://github.com/sumup/sumup-cli/compare/v0.2.0...v0.3.0) (2026-08-18)
 
 
