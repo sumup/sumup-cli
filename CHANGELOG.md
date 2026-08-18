@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/sumup/sumup-cli/compare/v0.2.0...v0.3.0) (2026-08-18)
+
+
+### Features
+
+* autocomplete, man pages ([#120](https://github.com/sumup/sumup-cli/issues/120)) ([a03c6b6](https://github.com/sumup/sumup-cli/commit/a03c6b637a334c63ec7c6a7aaf542bc5d56c8b67))
+* **cd:** publish homebrew cask ([#121](https://github.com/sumup/sumup-cli/issues/121)) ([cc43546](https://github.com/sumup/sumup-cli/commit/cc435469dfe364c1b446c2a813eaa0a2ec0b2225))
+
 ## [0.2.0](https://github.com/sumup/sumup-cli/compare/v0.1.0...v0.2.0) (2026-08-15)
 
 
