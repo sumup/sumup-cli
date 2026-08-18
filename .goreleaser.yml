@@ -123,6 +123,12 @@ homebrew_casks:
     homepage: https://developer.sumup.com
     description: Command line tool for interacting with SumUp APIs.
     license: Apache-2.0
+    manpages:
+      - man/man1/sumup.1.gz
+    completions:
+      bash: completions/sumup.bash
+      zsh: completions/sumup.zsh
+      fish: completions/sumup.fish
     # Binaries are not yet notarized; clear quarantine so Gatekeeper does not
     # block the unsigned CLI. Remove this hook once macOS signing is enabled.
     hooks:
