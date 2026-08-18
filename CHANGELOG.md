@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/sumup/sumup-cli/compare/v0.4.0...v0.4.1) (2026-08-18)
+
+
+### Bug Fixes
+
+* **cd:** declare cask manpage and completions ([#130](https://github.com/sumup/sumup-cli/issues/130)) ([1c048eb](https://github.com/sumup/sumup-cli/commit/1c048eb615eed02d8bbc020aabac5bafad93e974))
+* **cd:** reuse existing CLI code samples PR ([#128](https://github.com/sumup/sumup-cli/issues/128)) ([b4f34e1](https://github.com/sumup/sumup-cli/commit/b4f34e107b531c5b6f3d0ad84f7d2aa2c0f45d70))
+
 ## [0.4.0](https://github.com/sumup/sumup-cli/compare/v0.3.1...v0.4.0) (2026-08-18)
 
 
