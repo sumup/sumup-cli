@@ -8,6 +8,11 @@ release:
 before:
   hooks:
     - go mod download
+    - mkdir -p completions
+    - sh -c "go run ./cmd/sumup completion bash > completions/sumup.bash"
+    - sh -c "go run ./cmd/sumup completion zsh > completions/sumup.zsh"
+    - sh -c "go run ./cmd/sumup completion fish > completions/sumup.fish"
+    - sh -c "go run ./cmd/sumup manpages -o man"
 
 builds:
   - id: macos
@@ -72,6 +77,8 @@ archives:
     files:
       - LICENSE
       - README.md
+      - completions/*
+      - man/*/*
   - id: macos-archive
     ids: [macos]
     formats: [tar.gz]
@@ -81,6 +88,8 @@ archives:
     files:
       - LICENSE
       - README.md
+      - completions/*
+      - man/*/*
   - id: windows-archive
     ids: [windows]
     formats: [zip]
@@ -90,6 +99,8 @@ archives:
     files:
       - LICENSE
       - README.md
+      - completions/*
+      - man/*/*
 
 checksum:
   name_template: checksums.txt
