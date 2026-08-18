@@ -3,7 +3,7 @@ name: Release
 on:
   release:
     types:
-      - published
+      - created
 
 permissions:
   contents: write
@@ -11,11 +11,14 @@ permissions:
 jobs:
   goreleaser:
     name: GoReleaser
+    # Only run for drafts created by release-please (or manual draft releases).
+    if: github.event.release.draft == true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.release.tag_name }}
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -29,6 +32,5 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Token with contents + pull-requests write on sumup/homebrew-cli.
-          # GITHUB_TOKEN cannot push cask updates to a different repository.
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ github.event.release.tag_name }}
