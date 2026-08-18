@@ -13,6 +13,14 @@ SumUp CLI tool allows you to manage your SumUp account, create checkouts, and mu
 
 ## Getting started
 
+### Install with Homebrew
+
+```bash
+brew install sumup/cli/sumup
+```
+
+### Install with Go
+
 ```bash
 go install github.com/sumup/sumup-cli/cmd/sumup
 ```
