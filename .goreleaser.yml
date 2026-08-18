@@ -4,7 +4,7 @@ project_name: sumup
 
 release:
   prerelease: auto
-  use_existing_draft: true
+  replace_existing_artifacts: true
 
 before:
   hooks:
