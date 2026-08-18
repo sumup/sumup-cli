@@ -20,6 +20,9 @@ func main() {
 		Usage:                 "Command line tool for the SumUp API",
 		Version:               buildinfo.Short(),
 		EnableShellCompletion: true,
+		ConfigureShellCompletionCommand: func(cmd *cli.Command) {
+			cmd.Hidden = false
+		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "api-key",

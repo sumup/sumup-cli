@@ -6,6 +6,7 @@ import (
 	"github.com/sumup/sumup-cli/internal/commands/checkouts"
 	"github.com/sumup/sumup-cli/internal/commands/context"
 	"github.com/sumup/sumup-cli/internal/commands/customers"
+	"github.com/sumup/sumup-cli/internal/commands/manpages"
 	"github.com/sumup/sumup-cli/internal/commands/members"
 	"github.com/sumup/sumup-cli/internal/commands/memberships"
 	"github.com/sumup/sumup-cli/internal/commands/merchants"
@@ -23,6 +24,7 @@ func All() []*cli.Command {
 		checkouts.NewCommand(),
 		context.NewCommand(),
 		customers.NewCommand(),
+		manpages.NewCommand(),
 		members.NewCommand(),
 		memberships.NewCommand(),
 		merchants.NewCommand(),

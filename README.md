@@ -23,6 +23,23 @@ The CLI expects an API key via the `SUMUP_API_KEY` environment variable by defau
 export SUMUP_API_KEY=your_api_key
 ```
 
+## Shell completion
+
+Generate a completion script for your shell and load it:
+
+```bash
+# bash
+source <(sumup completion bash)
+
+# zsh
+source <(sumup completion zsh)
+
+# fish
+sumup completion fish > ~/.config/fish/completions/sumup.fish
+```
+
+Release archives also include pre-generated bash, zsh, and fish completion scripts plus a man page (`man/man1/sumup.1.gz`).
+
 ## Managing merchant context
 
 To avoid repeating the `--merchant-code` flag in every command, you can set a merchant context:
