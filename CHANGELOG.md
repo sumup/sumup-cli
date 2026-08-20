@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/sumup/sumup-cli/compare/v0.4.1...v0.5.0) (2026-08-20)
+
+
+### Features
+
+* **codegen:** improve generated codesamples ([#139](https://github.com/sumup/sumup-cli/issues/139)) ([65392cb](https://github.com/sumup/sumup-cli/commit/65392cb8c210b1617d054dda6982ce5c00bc137e))
+
+
+### Bug Fixes
+
+* add missing go card reader checkout ([#137](https://github.com/sumup/sumup-cli/issues/137)) ([f2108af](https://github.com/sumup/sumup-cli/commit/f2108af6a11f986d93471d61b30e4e7a46b6fdb7))
+
 ## [0.4.1](https://github.com/sumup/sumup-cli/compare/v0.4.0...v0.4.1) (2026-08-18)
 
 
