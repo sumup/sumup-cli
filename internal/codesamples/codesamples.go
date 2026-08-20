@@ -75,10 +75,6 @@ var optionalSampleFlags = map[string]map[string]string{
 	"checkouts update": {
 		"description": "Updated order",
 	},
-	"checkouts process": {
-		"customer-id": "$CUSTOMER_ID",
-		"token":       "$PAYMENT_INSTRUMENT_TOKEN",
-	},
 	"customers create": {
 		"email": "customer@example.com",
 	},
@@ -94,21 +90,22 @@ var optionalSampleFlags = map[string]map[string]string{
 }
 
 var flagSampleValues = map[string]string{
-	"amount":        "10.00",
-	"context":       "example.com",
-	"currency":      "EUR",
-	"email":         "member@example.com",
-	"end-date":      "2026-01-31",
-	"merchant-code": "$SUMUP_MERCHANT_CODE",
-	"name":          "Example",
-	"pairing-code":  "4WLFDSBF",
-	"password":      "$MEMBER_PASSWORD",
-	"payment-type":  "card",
-	"permission":    "members_access",
-	"reference":     "order-123",
-	"role":          "role_employee",
-	"start-date":    "2026-01-01",
-	"target":        "https://apple-pay-gateway-cert.apple.com/paymentservices/startSession",
+	"amount":                "10.00",
+	"client-transaction-id": "19e12390-72cf-4f9f-80b5-b0c8a67fa43f",
+	"context":               "example.com",
+	"currency":              "EUR",
+	"email":                 "member@example.com",
+	"end-date":              "2026-01-31",
+	"merchant-code":         "$SUMUP_MERCHANT_CODE",
+	"name":                  "Example",
+	"pairing-code":          "4WLFDSBF",
+	"password":              "$MEMBER_PASSWORD",
+	"payment-type":          "card",
+	"permission":            "members_access",
+	"reference":             "order-123",
+	"role":                  "role_employee",
+	"start-date":            "2026-01-01",
+	"target":                "https://apple-pay-gateway-cert.apple.com/paymentservices/startSession",
 }
 
 var argumentSampleValues = map[string]string{

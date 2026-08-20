@@ -199,6 +199,64 @@ func NewCommand() *cli.Command {
 					},
 				},
 			}),
+			apicommands.Bind("CreateGoReaderCheckout", &cli.Command{
+				Name:      "go-checkout",
+				Usage:     "Trigger a checkout on a SumUp Go reader.",
+				Action:    goReaderCheckout,
+				ArgsUsage: "<reader-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the reader. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
+					},
+					&cli.StringFlag{
+						Name:     "amount",
+						Usage:    "Amount to charge, expressed in major units (for example 14.99).",
+						Required: true,
+					},
+					&cli.IntFlag{
+						Name:  "minor-unit",
+						Usage: "Number of decimal places for the currency (for example 2 for EUR).",
+						Value: 2,
+					},
+					&cli.StringFlag{
+						Name:     "currency",
+						Usage:    fmt.Sprintf("Currency used for the transaction amount. Supported: %s", strings.Join(currency.Supported(), ", ")),
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "client-transaction-id",
+						Usage:    "Caller-supplied correlation identifier, used as the idempotency key.",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "tip-amount",
+						Usage: "Optional tip amount in major units, added on top of the total amount.",
+					},
+					&cli.StringFlag{
+						Name:  "affiliate-app-id",
+						Usage: "Affiliate app ID to attribute the transaction.",
+					},
+					&cli.StringFlag{
+						Name:  "affiliate-key",
+						Usage: "Affiliate key to attribute the transaction.",
+					},
+				},
+			}),
+			apicommands.Bind("GetReaderCheckout", &cli.Command{
+				Name:      "get-checkout",
+				Usage:     "Get a checkout for a reader.",
+				Action:    getReaderCheckout,
+				ArgsUsage: "<reader-id> <checkout-id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "merchant-code",
+						Usage:   "Merchant code that owns the reader. Falls back to context.",
+						Sources: cli.EnvVars("SUMUP_MERCHANT_CODE"),
+					},
+				},
+			}),
 		},
 	}
 }
@@ -318,23 +376,16 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	parsedCurrency, err := currency.Parse(cmd.String("currency"))
+	parsedCurrency, value, err := parseAmountMinorUnits(cmd, cmd.String("amount"))
 	if err != nil {
 		return err
-	}
-	value, err := currency.ToMinorUnits(cmd.String("amount"), int32(cmd.Int("minor-unit")))
-	if err != nil {
-		return err
-	}
-	if value > int64(math.MaxInt32) || value < int64(math.MinInt32) {
-		return fmt.Errorf("amount is too large to convert into minor units")
 	}
 
 	body := sumup.ReadersCreateCheckoutParams{
 		TotalAmount: sumup.CreateCheckoutRequestTotalAmount{
 			Currency:  currency.Code(parsedCurrency),
 			MinorUnit: cmd.Int("minor-unit"),
-			Value:     int(value),
+			Value:     value,
 		},
 	}
 
@@ -390,6 +441,99 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 		details = append(details, attribute.Attribute("Description", attribute.Styled(desc)))
 	}
 	return display.DataList(appCtx.Output, details)
+}
+
+func goReaderCheckout(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
+	readerID, err := util.RequireSingleArg(cmd, "reader ID")
+	if err != nil {
+		return err
+	}
+	parsedCurrency, value, err := parseAmountMinorUnits(cmd, cmd.String("amount"))
+	if err != nil {
+		return err
+	}
+
+	body := sumup.ReadersCreateGoCheckoutParams{
+		ClientTransactionID: cmd.String("client-transaction-id"),
+		TotalAmount: sumup.Amount{
+			Currency: currency.Code(parsedCurrency),
+			Value:    value,
+		},
+	}
+	if cmd.IsSet("tip-amount") {
+		_, tipValue, err := parseAmountMinorUnits(cmd, cmd.String("tip-amount"))
+		if err != nil {
+			return fmt.Errorf("tip amount: %w", err)
+		}
+		body.TipAmount = &tipValue
+	}
+
+	affiliate, err := buildGoAffiliatePayload(cmd)
+	if err != nil {
+		return err
+	}
+	if affiliate != nil {
+		body.Affiliate = affiliate
+	}
+
+	response, err := appCtx.Client.Readers.CreateGoCheckout(ctx, merchantCode, sumup.ReaderID(readerID), body)
+	if err != nil {
+		return fmt.Errorf("trigger go reader checkout: %w", err)
+	}
+
+	details := []attribute.KeyValue{
+		attribute.Attribute("Amount", attribute.Styled(currency.Format(float64(value)/math.Pow10(cmd.Int("minor-unit")), parsedCurrency))),
+		attribute.Attribute("Client Transaction ID", attribute.Styled(cmd.String("client-transaction-id"))),
+	}
+	if response != nil && response.Data != nil {
+		if response.Data.TransactionCode != nil && *response.Data.TransactionCode != "" {
+			details = append(details, attribute.Attribute("Transaction Code", attribute.Styled(*response.Data.TransactionCode)))
+		}
+	}
+
+	return display.RenderMutation(appCtx.Output, appCtx.StatusOutput, appCtx.JSONOutput, display.MutationResult{
+		JSONValue:      response,
+		SuccessMessage: "Go reader checkout initiated",
+		Details:        details,
+	})
+}
+
+func getReaderCheckout(ctx context.Context, cmd *cli.Command) error {
+	appCtx, err := app.GetAppContext(cmd)
+	if err != nil {
+		return err
+	}
+	merchantCode, err := app.GetMerchantCode(cmd, "merchant-code")
+	if err != nil {
+		return err
+	}
+	if cmd.Args().Len() != 2 {
+		return fmt.Errorf("expected exactly 2 arguments: reader ID and checkout ID")
+	}
+	readerID := cmd.Args().Get(0)
+	checkoutID := cmd.Args().Get(1)
+
+	response, err := appCtx.Client.Readers.GetCheckout(ctx, merchantCode, readerID, checkoutID)
+	if err != nil {
+		return fmt.Errorf("get reader checkout: %w", err)
+	}
+
+	if appCtx.JSONOutput {
+		return display.PrintJSON(appCtx.Output, response)
+	}
+	if response == nil {
+		return nil
+	}
+
+	return renderReaderCheckout(appCtx, appCtx.Output, &response.Data)
 }
 
 func readerStatus(ctx context.Context, cmd *cli.Command) error {
@@ -561,4 +705,76 @@ func buildAffiliatePayload(cmd *cli.Command) (*sumup.CreateCheckoutRequestAffili
 		Key:                  key,
 		ForeignTransactionID: foreignID,
 	}, nil
+}
+
+func buildGoAffiliatePayload(cmd *cli.Command) (*sumup.Affiliate, error) {
+	appID := cmd.String("affiliate-app-id")
+	key := cmd.String("affiliate-key")
+	if appID == "" && key == "" {
+		return nil, nil
+	}
+	if appID == "" || key == "" {
+		return nil, fmt.Errorf("affiliate requires --affiliate-app-id and --affiliate-key")
+	}
+	return &sumup.Affiliate{
+		AppID: appID,
+		Key:   key,
+	}, nil
+}
+
+func parseAmountMinorUnits(cmd *cli.Command, amount string) (sumup.Currency, int, error) {
+	parsedCurrency, err := currency.Parse(cmd.String("currency"))
+	if err != nil {
+		return "", 0, err
+	}
+	value, err := currency.ToMinorUnits(amount, int32(cmd.Int("minor-unit")))
+	if err != nil {
+		return "", 0, err
+	}
+	if value > int64(math.MaxInt32) || value < int64(math.MinInt32) {
+		return "", 0, fmt.Errorf("amount is too large to convert into minor units")
+	}
+	return parsedCurrency, int(value), nil
+}
+
+func renderReaderCheckout(appCtx *app.Context, w io.Writer, data *sumup.GetReaderCheckoutResponseData) error {
+	if data == nil {
+		return nil
+	}
+
+	majorAmount := float64(data.TotalAmount.Value) / math.Pow10(data.TotalAmount.MinorUnit)
+	amountText := fmt.Sprintf("%.*f %s", data.TotalAmount.MinorUnit, majorAmount, data.TotalAmount.Currency)
+	if parsedCurrency, err := currency.Parse(data.TotalAmount.Currency); err == nil {
+		amountText = currency.Format(majorAmount, parsedCurrency)
+	}
+
+	details := display.NewDetailsBuilder().
+		AddID(data.CheckoutID).
+		Add("Status", attribute.Styled(string(data.Status))).
+		Add("Payment Type", attribute.Styled(string(data.PaymentType))).
+		Add("Amount", attribute.Styled(amountText)).
+		Add("Client Transaction ID", attribute.Styled(data.ClientTransactionID)).
+		Add("Created At", attribute.Styled(util.TimeOrDash(appCtx, &data.CreatedAt))).
+		Add("Updated At", attribute.Styled(util.TimeOrDash(appCtx, &data.UpdatedAt))).
+		Add("Reader Serial", attribute.Styled(data.ReaderSerialNumber)).
+		Add("Firmware", attribute.Styled(data.ReaderFirmwareVersion))
+	if cardType := data.CardType.Value(); cardType != nil {
+		details.Add("Card Type", attribute.Styled(string(*cardType)))
+	}
+	if installments := data.Installments.Value(); installments != nil {
+		details.Add("Installments", attribute.Styled(*installments))
+	}
+	if paymentStatus := data.PaymentStatus.Value(); paymentStatus != nil {
+		details.Add("Payment Status", attribute.Styled(*paymentStatus))
+	}
+	if data.PaymentFailureReason != nil {
+		if reason := data.PaymentFailureReason.Value(); reason != nil && *reason != "" {
+			details.Add("Failure Reason", attribute.Styled(*reason))
+		}
+	}
+	if validUntil := data.ValidUntil.Value(); validUntil != nil {
+		details.Add("Valid Until", attribute.Styled(util.TimeOrDash(appCtx, validUntil)))
+	}
+
+	return details.Render(w)
 }
