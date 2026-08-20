@@ -14,6 +14,7 @@ import (
 
 	"github.com/sumup/sumup-cli/internal/apicommands"
 	"github.com/sumup/sumup-cli/internal/commands"
+	"github.com/sumup/sumup-cli/internal/currency"
 )
 
 const (
@@ -69,62 +70,17 @@ type sampleFlag struct {
 
 var argumentPattern = regexp.MustCompile(`[<\[]([a-z0-9-]+)[>\]]`)
 
-// optionalSampleFlags adds a representative field where an otherwise valid
-// command would not show what a create or update request changes.
-var optionalSampleFlags = map[string]map[string]string{
-	"checkouts update": {
-		"description": "Updated order",
-	},
-	"customers create": {
-		"email": "customer@example.com",
-	},
-	"customers update": {
-		"email": "updated-customer@example.com",
-	},
-	"members update": {
-		"role": "role_employee",
-	},
-	"roles update": {
-		"name": "Payment reviewer",
-	},
-}
-
-var flagSampleValues = map[string]string{
-	"amount":                "10.00",
-	"client-transaction-id": "19e12390-72cf-4f9f-80b5-b0c8a67fa43f",
-	"context":               "example.com",
-	"currency":              "EUR",
-	"email":                 "member@example.com",
-	"end-date":              "2026-01-31",
-	"merchant-code":         "$SUMUP_MERCHANT_CODE",
-	"name":                  "Example",
-	"pairing-code":          "4WLFDSBF",
-	"password":              "$MEMBER_PASSWORD",
-	"payment-type":          "card",
-	"permission":            "members_access",
-	"reference":             "order-123",
-	"role":                  "role_employee",
-	"start-date":            "2026-01-01",
-	"target":                "https://apple-pay-gateway-cert.apple.com/paymentservices/startSession",
-}
-
-var argumentSampleValues = map[string]string{
-	"checkout-id":    "$CHECKOUT_ID",
-	"customer-id":    "$CUSTOMER_ID",
-	"member-id":      "$MEMBER_ID",
-	"person-id":      "$PERSON_ID",
-	"reader-id":      "$READER_ID",
-	"role-id":        "$ROLE_ID",
-	"token":          "$PAYMENT_INSTRUMENT_TOKEN",
-	"transaction-id": "$TRANSACTION_ID",
-}
-
 // Generate builds a deterministic sample catalog for the current CLI command
 // tree and generated OpenAPI operation catalog.
 func Generate(cliVersion string) (*Catalog, error) {
 	cliVersion = strings.TrimSpace(cliVersion)
 	if cliVersion == "" {
 		return nil, errors.New("cli version is required")
+	}
+
+	spec, err := loadPinnedSpec()
+	if err != nil {
+		return nil, err
 	}
 
 	commandsByOperation := boundCommandsByOperation(commands.All())
@@ -134,15 +90,25 @@ func Generate(cliVersion string) (*Catalog, error) {
 		if err != nil {
 			return nil, err
 		}
-		source, err := renderCommand(command)
+		example := spec.exampleFor(operation.HTTPMethod, operation.Path)
+		source, err := renderCommand(spec, command, example)
 		if err != nil {
 			return nil, fmt.Errorf("generate sample for %q: %w", operation.ID, err)
+		}
+		summary := operation.Summary
+		if example.summary != "" {
+			summary = example.summary
+		}
+		description := operation.Description
+		if example.description != "" {
+			description = example.description
 		}
 		samples = append(samples, Sample{
 			ID:          operation.ID,
 			OperationID: operation.ID,
-			Summary:     operation.Summary,
-			Description: operation.Description,
+			Example:     example.name,
+			Summary:     summary,
+			Description: description,
 			HTTPMethod:  operation.HTTPMethod,
 			Path:        operation.Path,
 			Source:      source,
@@ -205,49 +171,158 @@ func commandForOperation(operationID string, candidates []boundCommand) (boundCo
 	return boundCommand{}, fmt.Errorf("OpenAPI operation %q has multiple CLI commands (%s)", operationID, strings.Join(paths, ", "))
 }
 
-func renderCommand(bound boundCommand) (string, error) {
-	invocation, err := buildInvocation(bound)
+func renderCommand(document *openAPIDocument, bound boundCommand, example operationExample) (string, error) {
+	invocation, err := buildInvocation(document, bound, example)
 	if err != nil {
 		return "", err
 	}
 	return invocation.source(), nil
 }
 
-func buildInvocation(bound boundCommand) (commandInvocation, error) {
+func buildInvocation(document *openAPIDocument, bound boundCommand, example operationExample) (commandInvocation, error) {
 	invocation := commandInvocation{path: strings.Fields(bound.path)}
 	for _, match := range argumentPattern.FindAllStringSubmatch(bound.command.ArgsUsage, -1) {
-		value, ok := argumentSampleValues[match[1]]
+		value, ok := argumentValue(document, example, match[1])
 		if !ok {
 			return commandInvocation{}, fmt.Errorf("no sample value for argument %q", match[1])
 		}
 		invocation.arguments = append(invocation.arguments, value)
 	}
 
+	flattened := flattenExample(example.body)
 	for _, flag := range bound.command.Flags {
 		name := flag.Names()[0]
-		value, optional := optionalSampleFlags[bound.path][name]
-		required := false
-		if requirement, ok := flag.(interface{ IsRequired() bool }); ok {
-			required = requirement.IsRequired()
-		}
-		if !required && name != "merchant-code" && !optional {
+		required := flagRequired(flag)
+		_, inBody := lookupExample(name, flattened)
+		allowSchema := required || name == "merchant-code" || !example.bodyProvided
+		if !required && name != "merchant-code" && !inBody && example.bodyProvided {
 			continue
 		}
 
-		if boolean, ok := flag.(interface{ IsBoolFlag() bool }); ok && boolean.IsBoolFlag() {
+		values, ok := flagValues(document, example, flattened, name, required || name == "merchant-code", allowSchema)
+		if !ok {
+			if required {
+				return commandInvocation{}, fmt.Errorf("no sample value for flag --%s", name)
+			}
+			continue
+		}
+
+		boolean := flagBoolean(flag)
+		if boolean {
+			if len(values) == 0 {
+				continue
+			}
 			invocation.flags = append(invocation.flags, sampleFlag{name: name, boolean: true})
 			continue
 		}
-		if !optional {
-			var ok bool
-			value, ok = flagSampleValues[name]
-			if !ok {
-				return commandInvocation{}, fmt.Errorf("no sample value for flag --%s", name)
-			}
+		for _, value := range values {
+			invocation.flags = append(invocation.flags, sampleFlag{name: name, value: value})
 		}
-		invocation.flags = append(invocation.flags, sampleFlag{name: name, value: value})
 	}
 	return invocation, nil
+}
+
+func argumentValue(document *openAPIDocument, example operationExample, name string) (string, bool) {
+	if value, ok := example.parameterExample(document, name); ok {
+		formatted := formatExampleValue(value)
+		if len(formatted) > 0 {
+			return formatted[0], true
+		}
+	}
+	parameter := example.parameter(name)
+	if parameter != nil {
+		if fallback := document.schemaFallback(parameter.Schema); fallback != nil {
+			formatted := formatExampleValue(fallback)
+			if len(formatted) > 0 {
+				return formatted[0], true
+			}
+		}
+	}
+	return "", false
+}
+
+func flagValues(document *openAPIDocument, example operationExample, flattened map[string]any, name string, fromParameters, allowSchema bool) ([]string, bool) {
+	if value, ok := lookupExample(name, flattened); ok {
+		formatted := formatExampleValue(value)
+		if name == "currency" {
+			if supported, ok := supportedCurrencyValue(document, formatted); ok {
+				return []string{supported}, true
+			}
+		} else if len(formatted) > 0 {
+			return formatted, true
+		}
+	}
+	if fromParameters {
+		if value, ok := example.parameterExample(document, name); ok {
+			formatted := formatExampleValue(value)
+			if len(formatted) > 0 {
+				return formatted, true
+			}
+		}
+	}
+	if allowSchema {
+		if property := document.propertySchema(example.bodySchema, name); property != nil {
+			if value, ok := document.schemaExample(property, nil); ok {
+				formatted := formatExampleValue(value)
+				if len(formatted) > 0 {
+					return formatted, true
+				}
+			}
+			if fromParameters {
+				if fallback := document.schemaFallback(property); fallback != nil {
+					formatted := formatExampleValue(fallback)
+					if len(formatted) > 0 {
+						return formatted, true
+					}
+				}
+			}
+		}
+	}
+	if fromParameters {
+		parameter := example.parameter(name)
+		if parameter != nil {
+			if fallback := document.schemaFallback(parameter.Schema); fallback != nil {
+				formatted := formatExampleValue(fallback)
+				if len(formatted) > 0 {
+					return formatted, true
+				}
+			}
+		}
+	}
+	return nil, false
+}
+
+func supportedCurrencyValue(document *openAPIDocument, formatted []string) (string, bool) {
+	if len(formatted) == 1 {
+		if _, err := currency.Parse(formatted[0]); err == nil {
+			return formatted[0], true
+		}
+	}
+	if document.Components.Schemas == nil {
+		return "", false
+	}
+	value, ok := document.schemaExample(document.Components.Schemas["Currency"], nil)
+	if !ok {
+		return "", false
+	}
+	text, ok := value.(string)
+	if !ok {
+		return "", false
+	}
+	if _, err := currency.Parse(text); err != nil {
+		return "", false
+	}
+	return text, true
+}
+
+func flagRequired(flag cli.Flag) bool {
+	requirement, ok := flag.(interface{ IsRequired() bool })
+	return ok && requirement.IsRequired()
+}
+
+func flagBoolean(flag cli.Flag) bool {
+	boolean, ok := flag.(interface{ IsBoolFlag() bool })
+	return ok && boolean.IsBoolFlag()
 }
 
 func (invocation commandInvocation) source() string {

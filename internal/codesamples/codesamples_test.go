@@ -55,16 +55,21 @@ func TestGenerate(t *testing.T) {
 		assert.NoError(t, err, "sample %q is not valid shell syntax:\n%s\n%s", sample.ID, sample.Source, output)
 	}
 
+	createCheckout := sampleByID(t, catalog.Samples, "CreateCheckout")
+	assert.Equal(t, "Checkout", createCheckout.Example)
 	assert.Equal(t, `sumup checkouts create \
-  --reference "order-123" \
-  --amount "10.00" \
+  --reference "f00a8f74-b05d-4605-bd73-2a901bae5802" \
+  --amount "10.1" \
   --currency "EUR" \
-  --merchant-code "$SUMUP_MERCHANT_CODE"
-`, sampleByID(t, catalog.Samples, "CreateCheckout").Source)
-	assert.Equal(t, `sumup merchants persons get "$PERSON_ID" \
-  --merchant-code "$SUMUP_MERCHANT_CODE"
+  --merchant-code "MH4H92C7" \
+  --description "Purchase" \
+  --redirect-url "https://sumup.com" \
+  --valid-until "2020-02-29T10:56:56+00:00"
+`, createCheckout.Source)
+	assert.Equal(t, `sumup merchants persons get "pers_5AKFHN2KSK8D3TS79DJE3P3A2Z" \
+  --merchant-code "MK10CL2A"
 `, sampleByID(t, catalog.Samples, "GetPerson").Source)
-	assert.Contains(t, sampleByID(t, catalog.Samples, "UpdateCheckout").Source, `--description "Updated order"`)
+	assert.Contains(t, sampleByID(t, catalog.Samples, "UpdateCheckout").Source, `--description "Updated purchase"`)
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateGoReaderCheckout").Source, "sumup readers go-checkout")
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "sumup members create")
 	assert.NotContains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "members invite")
@@ -105,7 +110,9 @@ func TestGeneratedInvocationsReachAPITransport(t *testing.T) {
 			commandsByOperation := boundCommandsByOperation(resourceCommands)
 			bound, err := commandForOperation(operation.ID, commandsByOperation[operation.ID])
 			require.NoError(t, err)
-			invocation, err := buildInvocation(bound)
+			spec, err := loadPinnedSpec()
+			require.NoError(t, err)
+			invocation, err := buildInvocation(spec, bound, spec.exampleFor(operation.HTTPMethod, operation.Path))
 			require.NoError(t, err)
 
 			transportError := errors.New("sample reached API transport")
