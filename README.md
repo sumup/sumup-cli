@@ -113,6 +113,17 @@ sumup readers checkout \
 
 When using affiliate attribution, pass all affiliate flags: `--affiliate-app-id`, `--affiliate-key`, and `--affiliate-foreign-transaction-id`.
 
+Trigger a checkout on a SumUp Go reader. `--client-transaction-id` is required and used as the idempotency key:
+
+```bash
+sumup readers go-checkout \
+  --merchant-code M123 \
+  --amount 14.99 \
+  --currency EUR \
+  --client-transaction-id 19e12390-72cf-4f9f-80b5-b0c8a67fa43f \
+  reader_42
+```
+
 Check the last known status of a paired reader:
 
 ```bash

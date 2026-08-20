@@ -65,7 +65,7 @@ func TestGenerate(t *testing.T) {
   --merchant-code "$SUMUP_MERCHANT_CODE"
 `, sampleByID(t, catalog.Samples, "GetPerson").Source)
 	assert.Contains(t, sampleByID(t, catalog.Samples, "UpdateCheckout").Source, `--description "Updated order"`)
-	assert.Contains(t, sampleByID(t, catalog.Samples, "ProcessCheckout").Source, `--token "$PAYMENT_INSTRUMENT_TOKEN"`)
+	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateGoReaderCheckout").Source, "sumup readers go-checkout")
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "sumup members create")
 	assert.NotContains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "members invite")
 

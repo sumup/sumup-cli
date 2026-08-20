@@ -10,7 +10,6 @@ import (
 	"github.com/urfave/cli/v3"
 
 	sumup "github.com/sumup/sumup-go"
-	"github.com/sumup/sumup-go/datetime"
 	"github.com/sumup/sumup-go/nullable"
 
 	"github.com/sumup/sumup-cli/internal/apicommands"
@@ -19,7 +18,6 @@ import (
 	"github.com/sumup/sumup-cli/internal/currency"
 	"github.com/sumup/sumup-cli/internal/display"
 	"github.com/sumup/sumup-cli/internal/display/attribute"
-	"github.com/sumup/sumup-cli/internal/display/message"
 )
 
 func NewCommand() *cli.Command {
@@ -183,28 +181,6 @@ func NewCommand() *cli.Command {
 						Name:  "currency",
 						Usage: fmt.Sprintf("Optional currency filter. Supported: %s", strings.Join(currency.Supported(), ", ")),
 					},
-				},
-			}),
-			apicommands.Bind("ProcessCheckout", &cli.Command{
-				Name:      "process",
-				Usage:     "Process a checkout.",
-				Action:    processCheckout,
-				ArgsUsage: "<checkout-id>",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "payment-type",
-						Usage:    "Payment type to use when processing the checkout.",
-						Required: true,
-					},
-					&cli.StringFlag{Name: "customer-id", Usage: "Customer ID for tokenized payments."},
-					&cli.StringFlag{Name: "token", Usage: "Saved payment instrument token."},
-					&cli.IntFlag{Name: "installments", Usage: "Installment count for supported regions."},
-					&cli.StringFlag{Name: "first-name", Usage: "Customer first name."},
-					&cli.StringFlag{Name: "last-name", Usage: "Customer last name."},
-					&cli.StringFlag{Name: "email", Usage: "Customer email."},
-					&cli.StringFlag{Name: "phone", Usage: "Customer phone."},
-					&cli.StringFlag{Name: "tax-id", Usage: "Customer tax ID."},
-					&cli.StringFlag{Name: "birth-date", Usage: "Customer birth date in YYYY-MM-DD format."},
 				},
 			}),
 		},
@@ -521,66 +497,6 @@ func listPaymentMethods(ctx context.Context, cmd *cli.Command) error {
 	})
 }
 
-func processCheckout(ctx context.Context, cmd *cli.Command) error {
-	appCtx, err := app.GetAppContext(cmd)
-	if err != nil {
-		return err
-	}
-	checkoutID, err := util.RequireSingleArg(cmd, "checkout ID")
-	if err != nil {
-		return err
-	}
-
-	body := sumup.CheckoutsProcessParams{
-		PaymentType: sumup.ProcessCheckoutPaymentType(cmd.String("payment-type")),
-	}
-	if customerID := cmd.String("customer-id"); customerID != "" {
-		body.CustomerID = &customerID
-	}
-	if token := cmd.String("token"); token != "" {
-		body.Token = &token
-	}
-	if cmd.IsSet("installments") {
-		value := cmd.Int("installments")
-		body.Installments = &value
-	}
-	if details, changedCount, err := checkoutPersonalDetailsFromFlags(cmd); err != nil {
-		return err
-	} else if changedCount > 0 {
-		body.PersonalDetails = details
-	}
-
-	response, err := appCtx.Client.Checkouts.Process(ctx, checkoutID, body)
-	if err != nil {
-		return fmt.Errorf("process checkout: %w", err)
-	}
-
-	if appCtx.JSONOutput {
-		return display.PrintJSON(appCtx.Output, response)
-	}
-
-	if response.CheckoutSuccess != nil {
-		if err := message.Success(appCtx.StatusOutput, "Checkout processed"); err != nil {
-			return err
-		}
-		return renderCheckout(appCtx, response.CheckoutSuccess)
-	}
-
-	if response.CheckoutAccepted != nil {
-		if err := message.Success(appCtx.StatusOutput, "Checkout accepted"); err != nil {
-			return err
-		}
-		if response.CheckoutAccepted.NextStep != nil {
-			return display.DataList(appCtx.Output, []attribute.KeyValue{
-				attribute.OptionalString("Method", response.CheckoutAccepted.NextStep.Method),
-				attribute.OptionalString("URL", response.CheckoutAccepted.NextStep.URL),
-				attribute.OptionalString("Redirect URL", response.CheckoutAccepted.NextStep.RedirectURL),
-			})
-		}
-	}
-	return nil
-}
-
 func renderCheckout(appCtx *app.Context, checkout *sumup.CheckoutSuccess) error {
 	if checkout == nil {
 		return nil
@@ -625,46 +541,6 @@ func checkoutMutationDetails(appCtx *app.Context, checkout *sumup.Checkout) []at
 		}
 	}
 	return details.Pairs()
-}
-
-func checkoutPersonalDetailsFromFlags(cmd *cli.Command) (*sumup.PersonalDetails, int, error) {
-	details := &sumup.PersonalDetails{}
-	changedCount := 0
-
-	if value := cmd.String("first-name"); value != "" {
-		details.FirstName = &value
-		changedCount++
-	}
-	if value := cmd.String("last-name"); value != "" {
-		details.LastName = &value
-		changedCount++
-	}
-	if value := cmd.String("email"); value != "" {
-		details.Email = &value
-		changedCount++
-	}
-	if value := cmd.String("phone"); value != "" {
-		details.Phone = &value
-		changedCount++
-	}
-	if value := cmd.String("tax-id"); value != "" {
-		details.TaxID = &value
-		changedCount++
-	}
-	if value := cmd.String("birth-date"); value != "" {
-		parsedDate, err := time.Parse(time.DateOnly, value)
-		if err != nil {
-			return nil, 0, fmt.Errorf("invalid birth date %q: %w", value, err)
-		}
-		date := datetime.Date{Time: parsedDate}
-		details.BirthDate = &date
-		changedCount++
-	}
-
-	if changedCount == 0 {
-		return nil, 0, nil
-	}
-	return details, changedCount, nil
 }
 
 func parseRFC3339Time(value string, label string) (time.Time, error) {

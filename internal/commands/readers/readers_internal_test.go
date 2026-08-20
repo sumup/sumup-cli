@@ -17,7 +17,7 @@ func TestNewCommand(t *testing.T) {
 	t.Run("reader context-aware commands do not require merchant code", func(t *testing.T) {
 		cmd := NewCommand()
 
-		for _, name := range []string{"get", "update", "terminate"} {
+		for _, name := range []string{"get", "update", "terminate", "go-checkout", "get-checkout"} {
 			subcommand := findSubcommand(t, cmd, name)
 			flag := findStringFlag(t, subcommand, "merchant-code")
 			assert.False(t, flag.Required, "%s merchant-code flag should allow context fallback", name)
