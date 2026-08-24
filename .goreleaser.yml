@@ -58,16 +58,6 @@ builds:
     ldflags:
       - -s -w -X github.com/sumup/sumup-cli/internal/buildinfo.Version={{ .Version }} -X github.com/sumup/sumup-cli/internal/buildinfo.Commit={{ .Commit }} -X github.com/sumup/sumup-cli/internal/buildinfo.Date={{ .Date }}
 
-    # Enable when signing credentials are configured in CI.
-    # hooks:
-    #   post:
-    #     - cmd: >-
-    #         {{ if eq .Os "darwin" }}./scripts/sign-macos.sh '{{ .Path }}'{{ else }}echo{{ end }}
-    #       output: true
-    #     - cmd: >-
-    #         {{ if eq .Os "windows" }}pwsh ./scripts/sign-windows.ps1 '{{ .Path }}'{{ else }}echo{{ end }}
-    #       output: true
-
 archives:
   - id: linux-archive
     ids: [linux]
@@ -106,6 +96,20 @@ archives:
 checksum:
   name_template: checksums.txt
 
+# Sign and notarize macOS binaries when Apple credentials are present.
+# Homebrew installs require notarized binaries (no quarantine bypass in the cask).
+notarize:
+  macos:
+    - enabled: '{{ isEnvSet "MACOS_SIGN_P12" }}'
+      ids: [macos]
+      sign:
+        certificate: "{{ .Env.MACOS_SIGN_P12 }}"
+        password: "{{ .Env.MACOS_SIGN_PASSWORD }}"
+      notarize:
+        issuer_id: "{{ .Env.MACOS_NOTARY_ISSUER_ID }}"
+        key_id: "{{ .Env.MACOS_NOTARY_KEY_ID }}"
+        key: "{{ .Env.MACOS_NOTARY_KEY }}"
+
 # Publishes Casks/sumup.rb to the public tap sumup/homebrew-cli.
 # Requires HOMEBREW_TAP_GITHUB_TOKEN with write access to that repository.
 homebrew_casks:
@@ -129,14 +133,6 @@ homebrew_casks:
       bash: completions/sumup.bash
       zsh: completions/sumup.zsh
       fish: completions/sumup.fish
-    # Binaries are not yet notarized; clear quarantine so Gatekeeper does not
-    # block the unsigned CLI. Remove this hook once macOS signing is enabled.
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/sumup"]
-          end
     skip_upload: auto
 
 changelog:
