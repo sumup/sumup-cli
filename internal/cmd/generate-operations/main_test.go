@@ -1,12 +1,45 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRunIncludesOnlyExplicitlyUnsupportedOperations(t *testing.T) {
+	t.Parallel()
+
+	directory := t.TempDir()
+	specPath := filepath.Join(directory, "sdk.json")
+	unsupportedSpecPath := filepath.Join(directory, "openapi.json")
+	outputPath := filepath.Join(directory, "catalog.go")
+	require.NoError(t, os.WriteFile(specPath, []byte(`{
+		"info":{"version":"1.0.0"},
+		"paths":{"/widgets":{"get":{"operationId":"ListWidgets","tags":["Widgets"],"x-codegen":{"method_name":"list"}}}}
+	}`), 0o600))
+	require.NoError(t, os.WriteFile(unsupportedSpecPath, []byte(`{
+		"info":{"version":"1.0.0"},
+		"paths":{
+			"/checkouts/{checkout_id}":{"put":{"operationId":"ProcessCheckout","tags":["Checkouts"],"x-codegen":{"method_name":"process"}}},
+			"/other":{"get":{"operationId":"OtherOperation","tags":["Other"],"x-codegen":{"method_name":"get"}}},
+			"/widgets":{"get":{"operationId":"ListWidgets","summary":"Must not override the SDK","tags":["Widgets"],"x-codegen":{"method_name":"list"}}}
+		}
+	}`), 0o600))
+
+	require.NoError(t, run(outputPath, specPath, "v1.2.3", unsupportedSpecPath))
+	generated, err := os.ReadFile(outputPath)
+	require.NoError(t, err)
+	output := string(generated)
+	assert.Regexp(t, `ID:\s+"ProcessCheckout"`, output)
+	assert.Contains(t, output, "Unsupported: true")
+	assert.Equal(t, 1, strings.Count(output, `"ListWidgets"`))
+	assert.NotContains(t, output, "OtherOperation")
+	assert.NotContains(t, output, "Must not override the SDK")
+}
 
 func TestParseOperations(t *testing.T) {
 	t.Parallel()

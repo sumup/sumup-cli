@@ -73,6 +73,7 @@ func TestGenerate(t *testing.T) {
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateGoReaderCheckout").Source, "sumup readers go-checkout")
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "sumup members create")
 	assert.NotContains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "members invite")
+	assert.Equal(t, "# not supported", sampleByID(t, catalog.Samples, "ProcessCheckout").Source)
 
 	encodedSample, err := json.Marshal(sampleByID(t, catalog.Samples, "CreateCheckout"))
 	require.NoError(t, err)
@@ -106,6 +107,9 @@ func TestGenerateRequiresVersion(t *testing.T) {
 func TestGeneratedInvocationsReachAPITransport(t *testing.T) {
 	for _, operation := range apicommands.Operations {
 		t.Run(operation.ID, func(t *testing.T) {
+			if operation.Unsupported {
+				return
+			}
 			resourceCommands := commands.All()
 			commandsByOperation := boundCommandsByOperation(resourceCommands)
 			bound, err := commandForOperation(operation.ID, commandsByOperation[operation.ID])
