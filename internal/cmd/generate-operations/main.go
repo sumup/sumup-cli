@@ -158,6 +158,12 @@ func run(outputPath, specPath, sdkVersion string) error {
 }
 
 func resolveModule() (*moduleInfo, error) {
+	// go list only includes Dir when the module has already been downloaded.
+	download := exec.Command("go", "mod", "download", sdkModule)
+	if output, err := download.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("download pinned SDK module: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+
 	command := exec.Command("go", "list", "-m", "-json", sdkModule)
 	output, err := command.Output()
 	if err != nil {
