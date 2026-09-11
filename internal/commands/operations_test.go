@@ -34,7 +34,11 @@ func TestOpenAPICatalogMatchesSDK(t *testing.T) {
 
 	catalogMethods := make([]string, 0, len(apicommands.Operations))
 	for _, operation := range apicommands.Operations {
-		catalogMethods = append(catalogMethods, operation.Client+"."+operation.SDKMethod)
+		method := operation.Client + "." + operation.SDKMethod
+		if operation.Unsupported && !slices.Contains(sdkMethods, method) {
+			continue
+		}
+		catalogMethods = append(catalogMethods, method)
 	}
 	slices.Sort(catalogMethods)
 
@@ -67,12 +71,19 @@ func TestCommandsCoverOpenAPICatalog(t *testing.T) {
 	slices.Sort(unbound)
 
 	missing := make([]string, 0)
+	exposedUnsupported := make([]string, 0)
 	for _, operation := range apicommands.Operations {
-		if _, ok := commandsByOperation[operation.ID]; !ok {
+		paths, ok := commandsByOperation[operation.ID]
+		if operation.Unsupported {
+			exposedUnsupported = append(exposedUnsupported, paths...)
+			continue
+		}
+		if !ok {
 			missing = append(missing, operation.Client+"."+operation.SDKMethod+" ("+operation.ID+")")
 		}
 	}
 	slices.Sort(missing)
+	slices.Sort(exposedUnsupported)
 
 	duplicates := make([]string, 0)
 	for operationID, paths := range commandsByOperation {
@@ -86,6 +97,7 @@ func TestCommandsCoverOpenAPICatalog(t *testing.T) {
 
 	require.Empty(t, unbound, "API commands without an OpenAPI operation binding")
 	require.Empty(t, duplicates, "OpenAPI operations exposed by more than one CLI command")
+	require.Empty(t, exposedUnsupported, "unsupported OpenAPI operations exposed by a CLI command")
 	assert.Empty(t, missing, "SDK operations without a CLI command")
 }
 

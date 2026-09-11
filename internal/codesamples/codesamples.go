@@ -21,6 +21,7 @@ const (
 	catalogSchemaVersion = 1
 	cliModule            = "github.com/sumup/sumup-cli"
 	cliLanguage          = "bash"
+	unsupportedSample    = "# not supported"
 )
 
 // Catalog is the versioned JSON contract consumed by documentation sites.
@@ -86,14 +87,17 @@ func Generate(cliVersion string) (*Catalog, error) {
 	commandsByOperation := boundCommandsByOperation(commands.All())
 	samples := make([]Sample, 0, len(apicommands.Operations))
 	for _, operation := range apicommands.Operations {
-		command, err := commandForOperation(operation.ID, commandsByOperation[operation.ID])
-		if err != nil {
-			return nil, err
-		}
 		example := spec.exampleFor(operation.HTTPMethod, operation.Path)
-		source, err := renderCommand(spec, command, example)
-		if err != nil {
-			return nil, fmt.Errorf("generate sample for %q: %w", operation.ID, err)
+		source := unsupportedSample
+		if !operation.Unsupported {
+			command, err := commandForOperation(operation.ID, commandsByOperation[operation.ID])
+			if err != nil {
+				return nil, err
+			}
+			source, err = renderCommand(spec, command, example)
+			if err != nil {
+				return nil, fmt.Errorf("generate sample for %q: %w", operation.ID, err)
+			}
 		}
 		summary := operation.Summary
 		if example.summary != "" {

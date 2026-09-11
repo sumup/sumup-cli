@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-//go:generate go run ../cmd/generate-operations -out catalog.gen.go
+//go:generate go run ../cmd/generate-operations -out catalog.gen.go -unsupported-spec ../../openapi.json
 
 const operationIDMetadataKey = "sumup.openapi.operation-id"
 
@@ -37,6 +37,7 @@ type Operation struct {
 	Path        string
 	Summary     string
 	Description string
+	Unsupported bool
 	Parameters  []Parameter
 	RequestBody *RequestBody
 }
@@ -58,8 +59,12 @@ func Bind(operationID string, command *cli.Command) *cli.Command {
 	if command == nil {
 		panic("cannot bind an OpenAPI operation to a nil command")
 	}
-	if _, ok := Lookup(operationID); !ok {
+	operation, ok := Lookup(operationID)
+	if !ok {
 		panic(fmt.Sprintf("unknown OpenAPI operation %q", operationID))
+	}
+	if operation.Unsupported {
+		panic(fmt.Sprintf("unsupported OpenAPI operation %q", operationID))
 	}
 	if command.Metadata == nil {
 		command.Metadata = make(map[string]any)

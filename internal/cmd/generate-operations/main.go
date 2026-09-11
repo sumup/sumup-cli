@@ -18,6 +18,11 @@ import (
 
 const sdkModule = "github.com/sumup/sumup-go"
 
+var unsupportedOperationIDs = map[string]struct{}{
+	// Processing raw payment instruments is deliberately not exposed by the CLI.
+	"ProcessCheckout": {},
+}
+
 type moduleInfo struct {
 	Path    string
 	Version string
@@ -82,6 +87,7 @@ type operation struct {
 	Path        string
 	Summary     string
 	Description string
+	Unsupported bool
 	Parameters  []parameter
 	RequestBody *requestBody
 }
@@ -103,19 +109,21 @@ type requestBody struct {
 func main() {
 	var outputPath string
 	var specPath string
+	var unsupportedSpecPath string
 	var sdkVersion string
 	flag.StringVar(&outputPath, "out", "catalog.gen.go", "generated Go output path")
 	flag.StringVar(&specPath, "spec", "", "OpenAPI document path; defaults to the pinned SDK module")
+	flag.StringVar(&unsupportedSpecPath, "unsupported-spec", "", "OpenAPI document containing explicitly unsupported operations omitted from the SDK")
 	flag.StringVar(&sdkVersion, "sdk-version", "", "SDK version; defaults to the pinned module version")
 	flag.Parse()
 
-	if err := run(outputPath, specPath, sdkVersion); err != nil {
+	if err := run(outputPath, specPath, sdkVersion, unsupportedSpecPath); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "generate operations: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(outputPath, specPath, sdkVersion string) error {
+func run(outputPath, specPath, sdkVersion, unsupportedSpecPath string) error {
 	if specPath == "" || sdkVersion == "" {
 		module, err := resolveModule()
 		if err != nil {
@@ -145,6 +153,23 @@ func run(outputPath, specPath, sdkVersion string) error {
 	if err != nil {
 		return err
 	}
+	if unsupportedSpecPath != "" {
+		unsupportedSpec, err := os.ReadFile(unsupportedSpecPath)
+		if err != nil {
+			return fmt.Errorf("read unsupported operations document: %w", err)
+		}
+		candidates, err := parseUnsupportedOperations(unsupportedSpec)
+		if err != nil {
+			return err
+		}
+		for _, candidate := range candidates {
+			if !slices.ContainsFunc(operations, func(existing operation) bool {
+				return existing.ID == candidate.ID
+			}) {
+				operations = append(operations, candidate)
+			}
+		}
+	}
 
 	generated, err := renderCatalog(document.Info.Version, sdkVersion, spec, operations)
 	if err != nil {
@@ -155,6 +180,50 @@ func run(outputPath, specPath, sdkVersion string) error {
 	}
 
 	return nil
+}
+
+func parseUnsupportedOperations(spec []byte) ([]operation, error) {
+	var document struct {
+		Paths map[string]map[string]json.RawMessage `json:"paths"`
+	}
+	if err := json.Unmarshal(spec, &document); err != nil {
+		return nil, fmt.Errorf("decode unsupported operations document: %w", err)
+	}
+	var operations []operation
+	for path, item := range document.Paths {
+		for _, method := range []string{"delete", "get", "patch", "post", "put"} {
+			raw, ok := item[method]
+			if !ok {
+				continue
+			}
+			var header struct {
+				ID string `json:"operationId"`
+			}
+			if err := json.Unmarshal(raw, &header); err != nil {
+				return nil, fmt.Errorf("decode operation ID: %w", err)
+			}
+			if _, unsupported := unsupportedOperationIDs[header.ID]; !unsupported {
+				continue
+			}
+			var source openAPIOperation
+			if err := json.Unmarshal(raw, &source); err != nil {
+				return nil, fmt.Errorf("decode unsupported operation %q: %w", header.ID, err)
+			}
+			var parameters []openAPIParameter
+			if rawParameters, ok := item["parameters"]; ok {
+				if err := json.Unmarshal(rawParameters, &parameters); err != nil {
+					return nil, fmt.Errorf("decode path parameters for %q: %w", header.ID, err)
+				}
+			}
+			parsed, err := parseOperation(path, strings.ToUpper(method), parameters, &source)
+			if err != nil {
+				return nil, err
+			}
+			operations = append(operations, parsed)
+		}
+	}
+	slices.SortFunc(operations, func(a, b operation) int { return strings.Compare(a.ID, b.ID) })
+	return operations, nil
 }
 
 func resolveModule() (*moduleInfo, error) {
@@ -261,6 +330,7 @@ func parseOperation(path, httpMethod string, pathParameters []openAPIParameter, 
 		Summary:     strings.TrimSpace(source.Summary),
 		Description: strings.TrimSpace(source.Description),
 	}
+	_, result.Unsupported = unsupportedOperationIDs[source.OperationID]
 	for _, sourceParameter := range append(slices.Clone(pathParameters), source.Parameters...) {
 		result.Parameters = append(result.Parameters, parameter{
 			Name:        sourceParameter.Name,
@@ -327,6 +397,9 @@ func renderCatalog(openAPIVersion, sdkVersion string, spec []byte, operations []
 		fmt.Fprintf(&output, "\t\tPath: %q,\n", operation.Path)
 		fmt.Fprintf(&output, "\t\tSummary: %q,\n", operation.Summary)
 		fmt.Fprintf(&output, "\t\tDescription: %q,\n", operation.Description)
+		if operation.Unsupported {
+			output.WriteString("\t\tUnsupported: true,\n")
+		}
 		if len(operation.Parameters) > 0 {
 			output.WriteString("\t\tParameters: []Parameter{\n")
 			for _, parameter := range operation.Parameters {

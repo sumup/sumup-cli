@@ -576,4 +576,18 @@ var Operations = []Operation{
 		},
 		RequestBody: &RequestBody{Schema: "object", Required: false},
 	},
+	{
+		ID:          "ProcessCheckout",
+		Client:      "Checkouts",
+		SDKMethod:   "Process",
+		HTTPMethod:  "PUT",
+		Path:        "/v0.1/checkouts/{checkout_id}",
+		Summary:     "Process a checkout",
+		Description: ":::caution[PCI DSS compliance required]\nWhen you submit raw card details directly to the Checkout API, your systems store, process, or transmit cardholder data and are therefore subject to applicable [PCI DSS requirements](https://www.pcisecuritystandards.org/document_library/). You should only use this integration if your environment is appropriately PCI DSS compliant.\n:::\n\nProcessing a checkout will attempt to charge the provided payment instrument for the amount of the specified checkout resource initiated in the `Create a checkout` endpoint.\n\nFollow this request with `Retrieve a checkout` to confirm its status.",
+		Unsupported: true,
+		Parameters: []Parameter{
+			{Name: "checkout_id", Location: "path", Description: "Unique identifier of the checkout resource.", Type: "string", Format: "", Required: true},
+		},
+		RequestBody: &RequestBody{Schema: "ProcessCheckout", Required: true},
+	},
 }
