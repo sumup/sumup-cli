@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/sumup/sumup-cli/compare/v0.5.0...v0.5.1) (2026-09-11)
+
+
+### Miscellaneous Chores
+
+* release 0.5.1 ([6843dbc](https://github.com/sumup/sumup-cli/commit/6843dbc5e3f18a86187e78def6289a63ce7c1f28))
+
 ## [0.5.0](https://github.com/sumup/sumup-cli/compare/v0.4.1...v0.5.0) (2026-08-20)
 
 
