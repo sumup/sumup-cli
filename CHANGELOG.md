@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/sumup/sumup-cli/compare/v0.5.1...v0.5.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* include all operations in code samples ([#151](https://github.com/sumup/sumup-cli/issues/151)) ([d8e8fdf](https://github.com/sumup/sumup-cli/commit/d8e8fdf9998eb2a12a6fab55d728b8913e5146b3))
+
 ## [0.5.1](https://github.com/sumup/sumup-cli/compare/v0.5.0...v0.5.1) (2026-09-11)
 
 
