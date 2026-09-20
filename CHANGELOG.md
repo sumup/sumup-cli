@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/sumup/sumup-cli/compare/v0.5.2...v0.6.0) (2026-09-20)
+
+
+### Features
+
+* **cd:** notarize macOS release binaries ([#123](https://github.com/sumup/sumup-cli/issues/123)) ([38fea52](https://github.com/sumup/sumup-cli/commit/38fea5200264efbd19a8c05c5c068ec5d742b67c))
+
 ## [0.5.2](https://github.com/sumup/sumup-cli/compare/v0.5.1...v0.5.2) (2026-09-11)
 
 
