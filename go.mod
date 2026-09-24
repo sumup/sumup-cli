@@ -1,6 +1,6 @@
 module github.com/sumup/sumup-cli
 
-go 1.25.5
+go 1.26.0
 
 require (
 	charm.land/bubbles/v2 v2.2.1
@@ -12,7 +12,7 @@ require (
 	github.com/sumup/sumup-go v0.19.0
 	github.com/urfave/cli-docs/v3 v3.1.0
 	github.com/urfave/cli/v3 v3.12.0
-	golang.org/x/term v0.45.0
+	golang.org/x/term v0.46.0
 )
 
 require (
@@ -35,5 +35,5 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 )
