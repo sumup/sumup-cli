@@ -11,17 +11,20 @@ Command line tool for interacting with SumUp APIs.
 
 SumUp CLI tool allows you to manage your SumUp account, create checkouts, and much more all from your terminal.
 
-## Getting started
+## Getting Started
 
-### Install with Homebrew
+### Installation
+
+Choose one of the following installation methods:
 
 ```bash
+# Homebrew
 brew install sumup/cli/sumup
-```
 
-### Install with Go
+# mise
+mise use -g github:sumup/sumup-cli@latest
 
-```bash
+# Go
 go install github.com/sumup/sumup-cli/cmd/sumup
 ```
 
@@ -31,7 +34,7 @@ The CLI expects an API key via the `SUMUP_API_KEY` environment variable by defau
 export SUMUP_API_KEY=your_api_key
 ```
 
-## Shell completion
+## Shell Completion
 
 Generate a completion script for your shell and load it:
 
@@ -48,7 +51,7 @@ sumup completion fish > ~/.config/fish/completions/sumup.fish
 
 Release archives also include pre-generated bash, zsh, and fish completion scripts plus a man page (`man/man1/sumup.1.gz`).
 
-## Managing merchant context
+## Managing Merchant Context
 
 To avoid repeating the `--merchant-code` flag in every command, you can set a merchant context:
 
@@ -65,7 +68,7 @@ sumup context unset
 
 Once set, all commands that accept `--merchant-code` will use the context value by default. You can still override it by providing the flag explicitly.
 
-## Create a checkout
+## Create a Checkout
 
 ```bash
 sumup checkouts create \
@@ -80,7 +83,7 @@ sumup checkouts create \
   --purpose "Event"
 ```
 
-## Manage readers
+## Manage Readers
 
 List readers for a merchant:
 
@@ -132,7 +135,7 @@ sumup readers status \
   reader_42
 ```
 
-## OpenAPI command coverage
+## OpenAPI Command Coverage
 
 The CLI keeps its user-facing command implementations handwritten, but derives
 an operation catalog from the OpenAPI document shipped with the exact
@@ -150,7 +153,7 @@ definition. Tests enforce a one-to-one relationship between the pinned SDK,
 the generated catalog, and the CLI command tree, so an SDK upgrade fails CI
 until every new endpoint has exactly one corresponding command.
 
-### Developer portal code samples
+### Developer Portal Code Samples
 
 Generate a deterministic, portal-compatible JSON catalog containing one CLI
 code sample for every OpenAPI operation exposed by the CLI:
