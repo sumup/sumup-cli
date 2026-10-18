@@ -7,7 +7,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.10
 	charm.land/lipgloss/v2 v2.0.6
 	github.com/mergestat/timediff v0.0.4
-	github.com/shopspring/decimal v1.4.0
+	github.com/shopspring/decimal v1.5.0
 	github.com/stretchr/testify v1.12.1
 	github.com/sumup/sumup-go v0.19.0
 	github.com/urfave/cli-docs/v3 v3.1.0
