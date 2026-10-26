@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/sumup/sumup-cli/compare/v0.6.0...v0.7.0) (2026-10-26)
+
+
+### Features
+
+* synced file(s) with sumup/apis ([#165](https://github.com/sumup/sumup-cli/issues/165)) ([7c3d02e](https://github.com/sumup/sumup-cli/commit/7c3d02e23d598e73f8523f41eb07fd9b4550bca3))
+
 ## [0.6.0](https://github.com/sumup/sumup-cli/compare/v0.5.2...v0.6.0) (2026-09-20)
 
 
