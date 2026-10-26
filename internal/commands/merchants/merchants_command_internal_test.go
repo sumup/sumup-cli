@@ -18,15 +18,15 @@ import (
 )
 
 func TestPersonCommands(t *testing.T) {
-	t.Run("list sends the requested version and renders persons", func(t *testing.T) {
+	t.Run("list renders persons without a version query", func(t *testing.T) {
 		cmd, out := newMerchantsCommand(t, func(request *http.Request) *http.Response {
 			assert.Equal(t, http.MethodGet, request.Method)
 			assert.Equal(t, "/v1/merchants/M123/persons", request.URL.Path)
-			assert.Equal(t, "latest", request.URL.Query().Get("version"))
+			assert.Empty(t, request.URL.RawQuery)
 			return merchantsJSONResponse(http.StatusOK, `{"items":[{"id":"person_123","given_name":"Ada","family_name":"Lovelace","relationships":["representative"],"user_id":"user_123"}]}`)
 		})
 
-		err := cmd.Run(t.Context(), []string{"merchants", "persons", "list", "--version", "latest"})
+		err := cmd.Run(t.Context(), []string{"merchants", "persons", "list"})
 
 		require.NoError(t, err)
 		for _, want := range []string{"Persons", "person_123", "Ada Lovelace", "representative", "user_123"} {
@@ -58,7 +58,7 @@ func TestPersonCommands(t *testing.T) {
 
 		err := cmd.Run(t.Context(), []string{"merchants", "get", "--version", "draft"})
 
-		require.EqualError(t, err, "version must be latest")
+		require.ErrorContains(t, err, "flag provided but not defined: -version")
 	})
 }
 

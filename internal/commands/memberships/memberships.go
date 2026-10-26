@@ -47,6 +47,10 @@ func NewCommand() *cli.Command {
 						Usage: "Filter memberships by the resource type.",
 					},
 					&cli.StringFlag{
+						Name:  "resource-id",
+						Usage: "Filter memberships by resource ID.",
+					},
+					&cli.StringFlag{
 						Name:  "resource-name",
 						Usage: "Filter memberships by resource name.",
 					},
@@ -91,6 +95,9 @@ func listMemberships(ctx context.Context, cmd *cli.Command) error {
 	}
 	if value := cmd.String("resource-name"); value != "" {
 		params.ResourceName = &value
+	}
+	if value := cmd.String("resource-id"); value != "" {
+		params.ResourceID = new(value)
 	}
 	if cmd.Bool("sandbox") {
 		value := true

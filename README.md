@@ -111,10 +111,14 @@ sumup readers checkout \
   --currency EUR \
   --tip-rate 0.10 \
   --tip-rate 0.15 \
+  --tip-rate 0.20 \
   --description "In-person order #123"
 ```
 
-When using affiliate attribution, pass all affiliate flags: `--affiliate-app-id`, `--affiliate-key`, and `--affiliate-foreign-transaction-id`.
+For Pix payments on Brazilian merchants, add `--payment-type pix`.
+
+When using affiliate attribution, pass both `--affiliate-app-id` and `--affiliate-key`.
+Use `--affiliate-foreign-transaction-id` to include an optional transaction reference.
 
 Trigger a checkout on a SumUp Go reader. `--client-transaction-id` is required and used as the idempotency key:
 
@@ -133,6 +137,27 @@ Check the last known status of a paired reader:
 sumup readers status \
   --merchant-code M123 \
   reader_42
+```
+
+Read or update Solo reader menu lock settings. Updates require the reader to be online;
+offline reads return the last saved settings when available.
+
+```bash
+sumup readers settings get --merchant-code M123 reader_42
+sumup readers settings update --merchant-code M123 --menu-lock-enabled=false reader_42
+```
+
+Set `SUMUP_READER_MENU_LOCK_PASSCODE` to a four-digit PIN to include it in an update.
+When enabling menu lock on a reader without a PIN, provide the PIN in the same update.
+
+## Create a Merchant Token
+
+Create a short-lived merchant token for a SumUp SDK. The command requires
+`--json` and returns the access token and its remaining lifetime. Without
+`--json`, it exits before creating a token:
+
+```bash
+sumup --json tokens create --merchant-code M123 --action checkout
 ```
 
 ## OpenAPI Command Coverage

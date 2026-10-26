@@ -185,6 +185,9 @@ func renderCommand(document *openAPIDocument, bound boundCommand, example operat
 
 func buildInvocation(document *openAPIDocument, bound boundCommand, example operationExample) (commandInvocation, error) {
 	invocation := commandInvocation{path: strings.Fields(bound.path)}
+	if operationID, _ := apicommands.OperationID(bound.command); operationID == "CreateMerchantToken" {
+		invocation.flags = append(invocation.flags, sampleFlag{name: "json", boolean: true})
+	}
 	for _, match := range argumentPattern.FindAllStringSubmatch(bound.command.ArgsUsage, -1) {
 		value, ok := argumentValue(document, example, match[1])
 		if !ok {
@@ -216,7 +219,7 @@ func buildInvocation(document *openAPIDocument, bound boundCommand, example oper
 			if len(values) == 0 {
 				continue
 			}
-			invocation.flags = append(invocation.flags, sampleFlag{name: name, boolean: true})
+			invocation.flags = append(invocation.flags, sampleFlag{name: name, value: values[0], boolean: true})
 			continue
 		}
 		for _, value := range values {
@@ -325,6 +328,9 @@ func flagRequired(flag cli.Flag) bool {
 }
 
 func flagBoolean(flag cli.Flag) bool {
+	if _, ok := flag.(*cli.BoolFlag); ok {
+		return true
+	}
 	boolean, ok := flag.(interface{ IsBoolFlag() bool })
 	return ok && boolean.IsBoolFlag()
 }
@@ -340,7 +346,9 @@ func (invocation commandInvocation) source() string {
 		source.WriteString(" \\\n  ")
 		source.WriteString("--")
 		source.WriteString(flag.name)
-		if !flag.boolean {
+		if flag.boolean && flag.value == "false" {
+			source.WriteString("=false")
+		} else if !flag.boolean {
 			source.WriteByte(' ')
 			source.WriteString(shellQuote(flag.value))
 		}
@@ -353,7 +361,11 @@ func (invocation commandInvocation) args() []string {
 	args := append([]string{"sumup"}, invocation.path...)
 	args = append(args, invocation.arguments...)
 	for _, flag := range invocation.flags {
-		args = append(args, "--"+flag.name)
+		name := "--" + flag.name
+		if flag.boolean && flag.value == "false" {
+			name += "=false"
+		}
+		args = append(args, name)
 		if !flag.boolean {
 			args = append(args, flag.value)
 		}

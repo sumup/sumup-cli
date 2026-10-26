@@ -24,11 +24,11 @@ type currencyInfo struct {
 }
 
 var infoByCurrency = map[sumup.Currency]currencyInfo{
-	sumup.CurrencyBGN: {symbol: "лв", decimals: 2, position: positionAfter},
 	sumup.CurrencyBRL: {symbol: "R$", decimals: 2, position: positionBefore},
 	sumup.CurrencyCHF: {symbol: "CHF ", decimals: 2, position: positionBefore},
 	sumup.CurrencyCLP: {symbol: "$", decimals: 0, position: positionBefore},
 	sumup.CurrencyCZK: {symbol: "Kč", decimals: 2, position: positionAfter},
+	sumup.CurrencyCop: {symbol: "$", decimals: 2, position: positionBefore},
 	sumup.CurrencyDKK: {symbol: "kr", decimals: 2, position: positionAfter},
 	sumup.CurrencyEUR: {symbol: "€", decimals: 2, position: positionAfterNoSpace},
 	sumup.CurrencyGBP: {symbol: "£", decimals: 2, position: positionBefore},
@@ -42,10 +42,10 @@ var infoByCurrency = map[sumup.Currency]currencyInfo{
 }
 
 var codeToCurrency = map[string]sumup.Currency{
-	"BGN": sumup.CurrencyBGN,
 	"BRL": sumup.CurrencyBRL,
 	"CHF": sumup.CurrencyCHF,
 	"CLP": sumup.CurrencyCLP,
+	"COP": sumup.CurrencyCop,
 	"CZK": sumup.CurrencyCZK,
 	"DKK": sumup.CurrencyDKK,
 	"EUR": sumup.CurrencyEUR,
@@ -104,10 +104,10 @@ func Parse(value string) (sumup.Currency, error) {
 // Supported returns the currency codes understood by the CLI.
 func Supported() []string {
 	return []string{
-		"BGN",
 		"BRL",
 		"CHF",
 		"CLP",
+		"COP",
 		"CZK",
 		"DKK",
 		"EUR",
