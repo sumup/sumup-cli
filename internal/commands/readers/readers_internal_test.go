@@ -2,6 +2,8 @@ package readers
 
 import (
 	"bytes"
+	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -26,11 +28,25 @@ func TestNewCommand(t *testing.T) {
 }
 
 func TestFormatCreateReaderError(t *testing.T) {
+	t.Parallel()
+
 	t.Run("wraps sparse problem responses without panicking", func(t *testing.T) {
 		err := formatCreateReaderError(&sumup.Problem{})
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "create reader:")
+	})
+	t.Run("preserves HTTP response and typed problem", func(t *testing.T) {
+		problem := &sumup.Problem{}
+		apiErr := &sumup.APIError{StatusCode: http.StatusBadRequest, Err: problem}
+
+		err := formatCreateReaderError(apiErr)
+
+		require.ErrorIs(t, err, apiErr)
+		require.ErrorIs(t, err, problem)
+		got, ok := errors.AsType[*sumup.APIError](err)
+		require.True(t, ok)
+		assert.Equal(t, http.StatusBadRequest, got.StatusCode)
 	})
 }
 

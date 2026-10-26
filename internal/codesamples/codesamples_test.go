@@ -64,7 +64,7 @@ func TestGenerate(t *testing.T) {
   --merchant-code "MH4H92C7" \
   --description "Purchase" \
   --redirect-url "https://sumup.com" \
-  --valid-until "2020-02-29T10:56:56+00:00"
+  --valid-until "2030-12-31T23:59:59Z"
 `, createCheckout.Source)
 	assert.Equal(t, `sumup merchants persons get "pers_5AKFHN2KSK8D3TS79DJE3P3A2Z" \
   --merchant-code "MK10CL2A"
@@ -74,6 +74,9 @@ func TestGenerate(t *testing.T) {
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "sumup members create")
 	assert.NotContains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "members invite")
 	assert.Equal(t, "# not supported", sampleByID(t, catalog.Samples, "ProcessCheckout").Source)
+	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateMerchantToken").Source, `--action "checkout"`)
+	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateMerchantToken").Source, "--json \\\n")
+	assert.Contains(t, sampleByID(t, catalog.Samples, "UpdateReaderSettings").Source, "--menu-lock-enabled \\\n")
 
 	encodedSample, err := json.Marshal(sampleByID(t, catalog.Samples, "CreateCheckout"))
 	require.NoError(t, err)
@@ -104,6 +107,39 @@ func TestGenerateRequiresVersion(t *testing.T) {
 	require.EqualError(t, err, "cli version is required")
 }
 
+func TestBooleanInvocations(t *testing.T) {
+	t.Parallel()
+
+	for _, enabled := range []bool{true, false} {
+		name := "enabled"
+		wantFlag := "--menu-lock-enabled"
+		if !enabled {
+			name = "disabled"
+			wantFlag += "=false"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			bound := boundCommand{
+				path: "readers settings update",
+				command: &cli.Command{Flags: []cli.Flag{
+					&cli.BoolFlag{Name: "menu-lock-enabled"},
+				}},
+			}
+			example := operationExample{
+				body:         map[string]any{"menu_lock": map[string]any{"enabled": enabled}},
+				bodyProvided: true,
+			}
+
+			invocation, err := buildInvocation(&openAPIDocument{}, bound, example)
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{"sumup", "readers", "settings", "update", wantFlag}, invocation.args())
+			assert.Equal(t, "sumup readers settings update \\\n  "+wantFlag+"\n", invocation.source())
+		})
+	}
+}
+
 func TestGeneratedInvocationsReachAPITransport(t *testing.T) {
 	for _, operation := range apicommands.Operations {
 		t.Run(operation.ID, func(t *testing.T) {
@@ -125,16 +161,20 @@ func TestGeneratedInvocationsReachAPITransport(t *testing.T) {
 				called = true
 				return nil, transportError
 			})}
+			appCtx := &app.Context{
+				Client:       sumup.NewClient(sumupclient.WithClient(httpClient), sumupclient.WithBaseURL("https://api.test")),
+				MerchantCode: "M123",
+				Output:       io.Discard,
+				StatusOutput: io.Discard,
+			}
 			root := &cli.Command{
 				Name:     "sumup",
 				Commands: resourceCommands,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{Name: "json", Destination: &appCtx.JSONOutput},
+				},
 				Metadata: map[string]any{
-					app.ContextKey: &app.Context{
-						Client:       sumup.NewClient(sumupclient.WithClient(httpClient), sumupclient.WithBaseURL("https://api.test")),
-						MerchantCode: "M123",
-						Output:       io.Discard,
-						StatusOutput: io.Discard,
-					},
+					app.ContextKey: appCtx,
 				},
 			}
 

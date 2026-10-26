@@ -29,7 +29,6 @@ func NewCommand() *cli.Command {
 				Action: getMerchant,
 				Flags: []cli.Flag{
 					merchantCodeFlag("Merchant code to retrieve information for. Falls back to context."),
-					versionFlag(),
 				},
 			}),
 			{
@@ -42,7 +41,6 @@ func NewCommand() *cli.Command {
 						Action: listPersons,
 						Flags: []cli.Flag{
 							merchantCodeFlag("Merchant code whose people should be listed. Falls back to context."),
-							versionFlag(),
 						},
 					}),
 					apicommands.Bind("GetPerson", &cli.Command{
@@ -52,7 +50,6 @@ func NewCommand() *cli.Command {
 						Action:    getPerson,
 						Flags: []cli.Flag{
 							merchantCodeFlag("Merchant code associated with the person. Falls back to context."),
-							versionFlag(),
 						},
 					}),
 				},
@@ -69,13 +66,6 @@ func merchantCodeFlag(usage string) cli.Flag {
 	}
 }
 
-func versionFlag() cli.Flag {
-	return &cli.StringFlag{
-		Name:  "version",
-		Usage: "Resource version to retrieve. Currently only latest is supported.",
-	}
-}
-
 func getMerchant(ctx context.Context, cmd *cli.Command) error {
 	appCtx, err := app.GetAppContext(cmd)
 	if err != nil {
@@ -87,12 +77,7 @@ func getMerchant(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	version, err := resourceVersion(cmd)
-	if err != nil {
-		return err
-	}
-
-	merchant, err := appCtx.Client.Merchants.Get(ctx, merchantCode, sumup.MerchantsGetParams{Version: version})
+	merchant, err := appCtx.Client.Merchants.Get(ctx, merchantCode)
 	if err != nil {
 		return fmt.Errorf("get merchant: %w", err)
 	}
@@ -113,12 +98,7 @@ func listPersons(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	version, err := resourceVersion(cmd)
-	if err != nil {
-		return err
-	}
-
-	response, err := appCtx.Client.Merchants.ListPersons(ctx, merchantCode, sumup.MerchantsListPersonsParams{Version: version})
+	response, err := appCtx.Client.Merchants.ListPersons(ctx, merchantCode)
 	if err != nil {
 		return fmt.Errorf("list persons: %w", err)
 	}
@@ -160,12 +140,7 @@ func getPerson(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	version, err := resourceVersion(cmd)
-	if err != nil {
-		return err
-	}
-
-	person, err := appCtx.Client.Merchants.GetPerson(ctx, merchantCode, personID, sumup.MerchantsGetPersonParams{Version: version})
+	person, err := appCtx.Client.Merchants.GetPerson(ctx, merchantCode, personID)
 	if err != nil {
 		return fmt.Errorf("get person: %w", err)
 	}
@@ -173,18 +148,6 @@ func getPerson(ctx context.Context, cmd *cli.Command) error {
 		return display.PrintJSON(appCtx.Output, person)
 	}
 	return renderPerson(appCtx.Output, person)
-}
-
-func resourceVersion(cmd *cli.Command) (*string, error) {
-	if !cmd.IsSet("version") {
-		return nil, nil
-	}
-
-	version := strings.TrimSpace(cmd.String("version"))
-	if version != "latest" {
-		return nil, fmt.Errorf("version must be latest")
-	}
-	return &version, nil
 }
 
 func renderMerchant(appCtx *app.Context, merchant *sumup.Merchant) error {

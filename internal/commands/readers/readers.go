@@ -2,7 +2,6 @@ package readers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -27,6 +26,7 @@ func NewCommand() *cli.Command {
 		Name:  "readers",
 		Usage: "Commands for managing in-person readers.",
 		Commands: []*cli.Command{
+			settingsCommand(),
 			apicommands.Bind("ListReaders", &cli.Command{
 				Name:   "list",
 				Usage:  "List paired readers for a merchant.",
@@ -170,6 +170,10 @@ func NewCommand() *cli.Command {
 						Usage: "URL that receives the payment result.",
 					},
 					&cli.StringFlag{
+						Name:  "payment-type",
+						Usage: "Payment method: card (default) or pix (Brazilian merchants only).",
+					},
+					&cli.StringFlag{
 						Name:  "card-type",
 						Usage: "Optional card type hint (required for some countries).",
 					},
@@ -183,7 +187,7 @@ func NewCommand() *cli.Command {
 					},
 					&cli.Float64SliceFlag{
 						Name:  "tip-rate",
-						Usage: "Provide multiple --tip-rate values to configure suggested tips (percentages 0.01-0.99).",
+						Usage: "Provide exactly three distinct --tip-rate values (fractions from 0.01 to 1.00 in increments of 0.01).",
 					},
 					&cli.StringFlag{
 						Name:  "affiliate-app-id",
@@ -232,7 +236,7 @@ func NewCommand() *cli.Command {
 					},
 					&cli.StringFlag{
 						Name:  "tip-amount",
-						Usage: "Optional tip amount in major units, added on top of the total amount.",
+						Usage: "Portion of the total amount that is a tip, expressed in major units.",
 					},
 					&cli.StringFlag{
 						Name:  "affiliate-app-id",
@@ -332,9 +336,6 @@ func addReader(ctx context.Context, cmd *cli.Command) error {
 }
 
 func formatCreateReaderError(err error) error {
-	if pErr := new(sumup.Problem); errors.As(err, &pErr) {
-		return fmt.Errorf("create reader: %w", pErr)
-	}
 	return fmt.Errorf("create reader: %w", err)
 }
 
@@ -394,6 +395,13 @@ func readerCheckout(ctx context.Context, cmd *cli.Command) error {
 	}
 	if returnURL := cmd.String("return-url"); returnURL != "" {
 		body.ReturnURL = &returnURL
+	}
+	if paymentType := cmd.String("payment-type"); paymentType != "" {
+		value := sumup.CreateCheckoutRequestPaymentType(paymentType)
+		if value != sumup.CreateCheckoutRequestPaymentTypeCard && value != sumup.CreateCheckoutRequestPaymentTypePix {
+			return fmt.Errorf("unsupported payment type %q: supported values: card, pix", paymentType)
+		}
+		body.PaymentType = new(value)
 	}
 	if cardType := cmd.String("card-type"); cardType != "" {
 		ct := sumup.CreateCheckoutRequestCardType(cardType)
@@ -463,7 +471,7 @@ func goReaderCheckout(ctx context.Context, cmd *cli.Command) error {
 
 	body := sumup.ReadersCreateGoCheckoutParams{
 		ClientTransactionID: cmd.String("client-transaction-id"),
-		TotalAmount: sumup.Amount{
+		TotalAmount: sumup.ReaderPaymentRequestParamsTotalAmount{
 			Currency: currency.Code(parsedCurrency),
 			Value:    value,
 		},
@@ -697,17 +705,17 @@ func buildAffiliatePayload(cmd *cli.Command) (*sumup.CreateCheckoutRequestAffili
 	if appID == "" && key == "" && foreignID == "" {
 		return nil, nil
 	}
-	if appID == "" || key == "" || foreignID == "" {
-		return nil, fmt.Errorf("affiliate requires --affiliate-app-id, --affiliate-key, and --affiliate-foreign-transaction-id")
+	if appID == "" || key == "" {
+		return nil, fmt.Errorf("affiliate requires --affiliate-app-id and --affiliate-key")
 	}
-	return &sumup.CreateCheckoutRequestAffiliate{
-		AppID:                appID,
-		Key:                  key,
-		ForeignTransactionID: foreignID,
-	}, nil
+	affiliate := &sumup.CreateCheckoutRequestAffiliate{AppID: appID, Key: key}
+	if foreignID != "" {
+		affiliate.ForeignTransactionID = new(foreignID)
+	}
+	return affiliate, nil
 }
 
-func buildGoAffiliatePayload(cmd *cli.Command) (*sumup.Affiliate, error) {
+func buildGoAffiliatePayload(cmd *cli.Command) (*sumup.ReaderPaymentRequestParamsAffiliate, error) {
 	appID := cmd.String("affiliate-app-id")
 	key := cmd.String("affiliate-key")
 	if appID == "" && key == "" {
@@ -716,7 +724,7 @@ func buildGoAffiliatePayload(cmd *cli.Command) (*sumup.Affiliate, error) {
 	if appID == "" || key == "" {
 		return nil, fmt.Errorf("affiliate requires --affiliate-app-id and --affiliate-key")
 	}
-	return &sumup.Affiliate{
+	return &sumup.ReaderPaymentRequestParamsAffiliate{
 		AppID: appID,
 		Key:   key,
 	}, nil
@@ -767,10 +775,8 @@ func renderReaderCheckout(appCtx *app.Context, w io.Writer, data *sumup.GetReade
 	if paymentStatus := data.PaymentStatus.Value(); paymentStatus != nil {
 		details.Add("Payment Status", attribute.Styled(*paymentStatus))
 	}
-	if data.PaymentFailureReason != nil {
-		if reason := data.PaymentFailureReason.Value(); reason != nil && *reason != "" {
-			details.Add("Failure Reason", attribute.Styled(*reason))
-		}
+	if reason := data.PaymentFailureReason.Value(); reason != nil && *reason != "" {
+		details.Add("Failure Reason", attribute.Styled(*reason))
 	}
 	if validUntil := data.ValidUntil.Value(); validUntil != nil {
 		details.Add("Valid Until", attribute.Styled(util.TimeOrDash(appCtx, validUntil)))

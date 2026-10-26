@@ -183,13 +183,10 @@ func formatExampleValue(value any) []string {
 	case nil:
 		return nil
 	case bool:
-		if !typed {
-			return nil
-		}
-		return []string{""}
+		return []string{strconv.FormatBool(typed)}
 	case map[string]any:
-		if enabled, ok := typed["enabled"].(bool); ok && enabled {
-			return []string{""}
+		if enabled, ok := typed["enabled"].(bool); ok {
+			return []string{strconv.FormatBool(enabled)}
 		}
 		return nil
 	case []any:

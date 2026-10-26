@@ -10,6 +10,20 @@ import (
 	"github.com/sumup/sumup-cli/internal/currency"
 )
 
+func TestParse(t *testing.T) {
+	t.Parallel()
+
+	got, err := currency.Parse("cop")
+	require.NoError(t, err)
+	assert.Equal(t, sumup.CurrencyCop, got)
+	assert.Contains(t, currency.Supported(), "COP")
+	assert.Equal(t, "$10.50", currency.Format(10.5, got))
+
+	_, err = currency.Parse("BGN")
+	require.ErrorContains(t, err, "unsupported currency")
+	assert.NotContains(t, currency.Supported(), "BGN")
+}
+
 func TestParseMajorUnits32(t *testing.T) {
 	t.Run("parses decimal strings without using float flags", func(t *testing.T) {
 		got, err := currency.ParseMajorUnits32("10.10")
