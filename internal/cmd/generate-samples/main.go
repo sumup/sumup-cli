@@ -14,18 +14,20 @@ import (
 func main() {
 	var outputPath string
 	var cliVersion string
+	var specPath string
 	flag.StringVar(&outputPath, "out", "", "output JSON path; defaults to stdout")
 	flag.StringVar(&cliVersion, "cli-version", "", "SumUp CLI version represented by the samples")
+	flag.StringVar(&specPath, "spec", "", "OpenAPI spec path; defaults to the pinned SDK spec")
 	flag.Parse()
 
-	if err := run(outputPath, cliVersion, os.Stdout); err != nil {
+	if err := run(outputPath, cliVersion, specPath, os.Stdout); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "generate samples: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(outputPath, cliVersion string, stdout io.Writer) error {
-	catalog, err := codesamples.Generate(cliVersion)
+func run(outputPath, cliVersion, specPath string, stdout io.Writer) error {
+	catalog, err := codesamples.Generate(cliVersion, specPath)
 	if err != nil {
 		return err
 	}
