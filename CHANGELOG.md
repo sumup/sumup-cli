@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/sumup/sumup-cli/compare/v0.7.0...v0.8.0) (2026-10-30)
+
+
+### Features
+
+* improve codesamples, update README.md ([#180](https://github.com/sumup/sumup-cli/issues/180)) ([bcae320](https://github.com/sumup/sumup-cli/commit/bcae3205e14be2a35f351084d4903d52ed4c487b))
+
 ## [0.7.0](https://github.com/sumup/sumup-cli/compare/v0.6.0...v0.7.0) (2026-10-26)
 
 
