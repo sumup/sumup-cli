@@ -30,7 +30,7 @@ func TestSchemaExampleFollowsRefChain(t *testing.T) {
 	assert.Equal(t, "EUR", value)
 }
 
-func TestExampleForPrefersFirstNamedRequestExample(t *testing.T) {
+func TestExamplesForIncludesEveryNamedRequestExample(t *testing.T) {
 	t.Parallel()
 
 	document, err := parseSpec([]byte(`{
@@ -65,8 +65,13 @@ func TestExampleForPrefersFirstNamedRequestExample(t *testing.T) {
 	}`))
 	require.NoError(t, err)
 
-	example := document.exampleFor("POST", "/widgets")
+	examples := document.examplesFor("POST", "/widgets")
+	require.NotEmpty(t, examples)
+	example := examples[0]
 
+	require.Len(t, examples, 2)
+	assert.Equal(t, "Zulu", examples[1].name)
+	assert.Equal(t, map[string]any{"name": "zulu"}, examples[1].body)
 	assert.Equal(t, "Alpha", example.name)
 	assert.Equal(t, map[string]any{"name": "alpha", "color": "blue"}, example.body)
 	assert.True(t, example.bodyProvided)
@@ -109,7 +114,9 @@ func TestExampleForWalksPropertyExamplesWhenRequestExampleIsMissing(t *testing.T
 	}`))
 	require.NoError(t, err)
 
-	example := document.exampleFor("POST", "/widgets")
+	examples := document.examplesFor("POST", "/widgets")
+	require.NotEmpty(t, examples)
+	example := examples[0]
 
 	assert.False(t, example.bodyProvided)
 	assert.Equal(t, map[string]any{

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,9 @@ import (
 const sdkModule = "github.com/sumup/sumup-go"
 
 type openAPIDocument struct {
+	Info struct {
+		Version string `json:"version"`
+	} `json:"info"`
 	Paths      map[string]*pathItem `json:"paths"`
 	Components struct {
 		Schemas    map[string]*specSchema `json:"schemas"`
@@ -94,29 +98,36 @@ type operationExample struct {
 }
 
 func loadPinnedSpec() (*openAPIDocument, error) {
+	path, err := pinnedSpecPath()
+	if err != nil {
+		return nil, err
+	}
+	return parseSpecFile(path)
+}
+
+func pinnedSpecPath() (string, error) {
 	command := exec.Command("go", "list", "-m", "-json", sdkModule)
 	output, err := command.Output()
 	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			return nil, fmt.Errorf("resolve pinned SDK module: %s", strings.TrimSpace(string(exitErr.Stderr)))
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
+			return "", fmt.Errorf("resolve pinned SDK module: %s", strings.TrimSpace(string(exitErr.Stderr)))
 		}
-		return nil, fmt.Errorf("resolve pinned SDK module: %w", err)
+		return "", fmt.Errorf("resolve pinned SDK module: %w", err)
 	}
 
 	var module moduleInfo
 	if err := json.Unmarshal(output, &module); err != nil {
-		return nil, fmt.Errorf("decode pinned SDK module: %w", err)
+		return "", fmt.Errorf("decode pinned SDK module: %w", err)
 	}
 	moduleDir := module.Dir
 	if module.Replace != nil {
 		moduleDir = module.Replace.Dir
 	}
 	if moduleDir == "" {
-		return nil, errors.New("pinned SDK module has no resolved directory")
+		return "", errors.New("pinned SDK module has no resolved directory")
 	}
 
-	return parseSpecFile(filepath.Join(moduleDir, "openapi.json"))
+	return filepath.Join(moduleDir, "openapi.json"), nil
 }
 
 func parseSpecFile(path string) (*openAPIDocument, error) {
@@ -135,32 +146,28 @@ func parseSpec(spec []byte) (*openAPIDocument, error) {
 	return &document, nil
 }
 
-func (document *openAPIDocument) exampleFor(httpMethod, apiPath string) operationExample {
+func (document *openAPIDocument) examplesFor(httpMethod, apiPath string) []operationExample {
 	item := document.Paths[apiPath]
 	if item == nil {
-		return operationExample{}
+		return []operationExample{{}}
 	}
 
 	source := item.operation(httpMethod)
 	parameters := document.resolveParameters(append(slices.Clone(item.Parameters), operationParameters(source)...))
 	example := operationExample{parameters: parameters}
 	if source == nil || source.RequestBody == nil {
-		return example
+		return []operationExample{example}
 	}
 
 	mediaType, ok := jsonMediaType(source.RequestBody.Content)
 	if !ok || mediaType == nil {
-		return example
+		return []operationExample{example}
 	}
 	example.bodySchema = mediaType.Schema
 
 	if len(mediaType.Examples) > 0 {
-		names := make([]string, 0, len(mediaType.Examples))
-		for name := range mediaType.Examples {
-			names = append(names, name)
-		}
-		slices.Sort(names)
-		for _, name := range names {
+		examples := make([]operationExample, 0, len(mediaType.Examples))
+		for _, name := range slices.Sorted(maps.Keys(mediaType.Examples)) {
 			named := mediaType.Examples[name]
 			if named == nil {
 				continue
@@ -169,26 +176,30 @@ func (document *openAPIDocument) exampleFor(httpMethod, apiPath string) operatio
 			if !provided {
 				continue
 			}
-			example.name = name
-			example.summary = strings.TrimSpace(named.Summary)
-			example.description = strings.TrimSpace(named.Description)
-			example.body, example.bodyProvided = objectValue(value)
-			return example
+			variant := example
+			variant.name = name
+			variant.summary = strings.TrimSpace(named.Summary)
+			variant.description = strings.TrimSpace(named.Description)
+			variant.body, variant.bodyProvided = objectValue(value)
+			examples = append(examples, variant)
+		}
+		if len(examples) > 0 {
+			return examples
 		}
 	}
 
 	if value, provided := decodeRaw(mediaType.Example); provided {
 		example.body, example.bodyProvided = objectValue(value)
-		return example
+		return []operationExample{example}
 	}
 	if value, provided := document.schemaExample(mediaType.Schema, nil); provided {
 		example.body, example.bodyProvided = objectValue(value)
 		if example.bodyProvided {
-			return example
+			return []operationExample{example}
 		}
 	}
 	example.body = document.objectFromSchema(mediaType.Schema, nil)
-	return example
+	return []operationExample{example}
 }
 
 func (item *pathItem) operation(httpMethod string) *operation {

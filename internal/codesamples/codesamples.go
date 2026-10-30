@@ -73,13 +73,19 @@ var argumentPattern = regexp.MustCompile(`[<\[]([a-z0-9-]+)[>\]]`)
 
 // Generate builds a deterministic sample catalog for the current CLI command
 // tree and generated OpenAPI operation catalog.
-func Generate(cliVersion string) (*Catalog, error) {
+func Generate(cliVersion, specPath string) (*Catalog, error) {
 	cliVersion = strings.TrimSpace(cliVersion)
 	if cliVersion == "" {
 		return nil, errors.New("cli version is required")
 	}
 
-	spec, err := loadPinnedSpec()
+	var spec *openAPIDocument
+	var err error
+	if specPath == "" {
+		spec, err = loadPinnedSpec()
+	} else {
+		spec, err = parseSpecFile(specPath)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -87,36 +93,41 @@ func Generate(cliVersion string) (*Catalog, error) {
 	commandsByOperation := boundCommandsByOperation(commands.All())
 	samples := make([]Sample, 0, len(apicommands.Operations))
 	for _, operation := range apicommands.Operations {
-		example := spec.exampleFor(operation.HTTPMethod, operation.Path)
-		source := unsupportedSample
-		if !operation.Unsupported {
-			command, err := commandForOperation(operation.ID, commandsByOperation[operation.ID])
-			if err != nil {
-				return nil, err
+		for _, example := range spec.examplesFor(operation.HTTPMethod, operation.Path) {
+			source := unsupportedSample
+			if !operation.Unsupported {
+				command, err := commandForOperation(operation.ID, commandsByOperation[operation.ID])
+				if err != nil {
+					return nil, err
+				}
+				source, err = renderCommand(spec, command, example)
+				if err != nil {
+					return nil, fmt.Errorf("generate sample for %q: %w", operation.ID, err)
+				}
 			}
-			source, err = renderCommand(spec, command, example)
-			if err != nil {
-				return nil, fmt.Errorf("generate sample for %q: %w", operation.ID, err)
+			summary := operation.Summary
+			if example.summary != "" {
+				summary = example.summary
 			}
+			description := operation.Description
+			if example.description != "" {
+				description = example.description
+			}
+			id := operation.ID
+			if example.name != "" {
+				id += "." + example.name
+			}
+			samples = append(samples, Sample{
+				ID:          id,
+				OperationID: operation.ID,
+				Example:     example.name,
+				Summary:     summary,
+				Description: description,
+				HTTPMethod:  operation.HTTPMethod,
+				Path:        operation.Path,
+				Source:      source,
+			})
 		}
-		summary := operation.Summary
-		if example.summary != "" {
-			summary = example.summary
-		}
-		description := operation.Description
-		if example.description != "" {
-			description = example.description
-		}
-		samples = append(samples, Sample{
-			ID:          operation.ID,
-			OperationID: operation.ID,
-			Example:     example.name,
-			Summary:     summary,
-			Description: description,
-			HTTPMethod:  operation.HTTPMethod,
-			Path:        operation.Path,
-			Source:      source,
-		})
 	}
 
 	slices.SortFunc(samples, func(a, b Sample) int {
@@ -130,7 +141,7 @@ func Generate(cliVersion string) (*Catalog, error) {
 			Module:  cliModule,
 			Version: cliVersion,
 		},
-		OpenAPIVersion: apicommands.CatalogOpenAPIVersion,
+		OpenAPIVersion: spec.Info.Version,
 		Samples:        samples,
 	}, nil
 }

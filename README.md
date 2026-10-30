@@ -2,18 +2,16 @@
 
 # SumUp CLI
 
-Command line tool for interacting with SumUp APIs.
+Manage your SumUp account from your terminal.
 
 [![Documentation][docs-badge]](https://developer.sumup.com)
-[![License](https://img.shields.io/github/license/sumup/sumup-rs)](./LICENSE)
+[![License](https://img.shields.io/github/license/sumup/sumup-cli)](./LICENSE)
 
 </div>
 
-SumUp CLI tool allows you to manage your SumUp account, create checkouts, and much more all from your terminal.
+Use the SumUp CLI to create checkouts, manage card readers, and view your account data.
 
-## Getting Started
-
-### Installation
+## Install
 
 Choose one of the following installation methods:
 
@@ -25,50 +23,50 @@ brew install sumup/cli/sumup
 mise use -g github:sumup/sumup-cli@latest
 
 # Go
-go install github.com/sumup/sumup-cli/cmd/sumup
+go install github.com/sumup/sumup-cli/cmd/sumup@latest
 ```
 
-The CLI expects an API key via the `SUMUP_API_KEY` environment variable by default. You can also pass `--api-key` explicitly.
+## Set up Your API Key
+
+Set the `SUMUP_API_KEY` environment variable to your SumUp API key:
 
 ```bash
-export SUMUP_API_KEY=your_api_key
+export SUMUP_API_KEY="your_api_key"
 ```
 
-## Shell Completion
+You can also pass a key with `sumup --api-key "your_api_key" <command>`.
 
-Generate a completion script for your shell and load it:
+## Find Commands and Options
 
 ```bash
-# bash
-source <(sumup completion bash)
-
-# zsh
-source <(sumup completion zsh)
-
-# fish
-sumup completion fish > ~/.config/fish/completions/sumup.fish
+sumup --help
+sumup readers --help
+sumup checkouts create --help
 ```
 
-Release archives also include pre-generated bash, zsh, and fish completion scripts plus a man page (`man/man1/sumup.1.gz`).
+Add `--help` to any command to see its options.
 
-## Managing Merchant Context
+## Choose a Merchant
 
-To avoid repeating the `--merchant-code` flag in every command, you can set a merchant context:
+Save a default merchant so you do not need to repeat `--merchant-code`:
 
 ```bash
-# Set the merchant context interactively
+# Choose a merchant
 sumup context set
 
-# View the current merchant context
+# Show the saved merchant
 sumup context get
 
-# Unset the merchant context
+# Clear the saved merchant
 sumup context unset
 ```
 
-Once set, all commands that accept `--merchant-code` will use the context value by default. You can still override it by providing the flag explicitly.
+Commands that accept `--merchant-code` use the saved merchant by default.
+Pass `--merchant-code` to use a different merchant for one command.
 
 ## Create a Checkout
+
+Replace `M123` with your merchant code. Use a unique reference for each checkout.
 
 ```bash
 sumup checkouts create \
@@ -76,14 +74,10 @@ sumup checkouts create \
   --amount 19.99 \
   --currency EUR \
   --merchant-code M123 \
-  --description "Ticket purchase" \
-  --return-url https://example.com/return \
-  --redirect-url https://example.com/3ds \
-  --customer-id cst_42 \
-  --purpose "Event"
+  --description "Ticket purchase"
 ```
 
-## Manage Readers
+## Manage readers
 
 List readers for a merchant:
 
@@ -100,27 +94,28 @@ sumup readers add \
   --name "Front counter"
 ```
 
-Trigger a checkout on a reader (this example charges EUR 14.99 and offers tip
-rates):
+Start a EUR 14.99 payment on a reader with three tip options.
+Replace `reader_42` with your reader ID:
 
 ```bash
 sumup readers checkout \
   --merchant-code M123 \
-  --reader-id reader_42 \
   --amount 14.99 \
   --currency EUR \
   --tip-rate 0.10 \
   --tip-rate 0.15 \
   --tip-rate 0.20 \
-  --description "In-person order #123"
+  --description "In-person order #123" \
+  reader_42
 ```
 
 For Pix payments on Brazilian merchants, add `--payment-type pix`.
 
-When using affiliate attribution, pass both `--affiliate-app-id` and `--affiliate-key`.
-Use `--affiliate-foreign-transaction-id` to include an optional transaction reference.
+To link a payment to your affiliate app, pass both `--affiliate-app-id` and `--affiliate-key`.
+Use `--affiliate-foreign-transaction-id` to add your own transaction reference.
 
-Trigger a checkout on a SumUp Go reader. `--client-transaction-id` is required and used as the idempotency key:
+Start a payment on a SumUp Go reader. Set `--client-transaction-id` to a unique ID
+for each new payment. Reuse the same ID when retrying that payment to avoid duplicates:
 
 ```bash
 sumup readers go-checkout \
@@ -139,59 +134,54 @@ sumup readers status \
   reader_42
 ```
 
-Read or update Solo reader menu lock settings. Updates require the reader to be online;
-offline reads return the last saved settings when available.
+View or change the menu lock settings on a Solo reader. The reader must be online
+to change its settings. If it is offline, you can view its last saved settings when available.
 
 ```bash
 sumup readers settings get --merchant-code M123 reader_42
 sumup readers settings update --merchant-code M123 --menu-lock-enabled=false reader_42
 ```
 
-Set `SUMUP_READER_MENU_LOCK_PASSCODE` to a four-digit PIN to include it in an update.
-When enabling menu lock on a reader without a PIN, provide the PIN in the same update.
+Set `SUMUP_READER_MENU_LOCK_PASSCODE` to a four-digit PIN to send it with the update.
+If the reader has no PIN, include one when you enable menu lock.
 
 ## Create a Merchant Token
 
-Create a short-lived merchant token for a SumUp SDK. The command requires
-`--json` and returns the access token and its remaining lifetime. Without
-`--json`, it exits before creating a token:
+Create a short-lived merchant token for a SumUp SDK. This command requires
+`--json` and returns the access token and its remaining lifetime:
 
 ```bash
 sumup --json tokens create --merchant-code M123 --action checkout
 ```
 
-## OpenAPI Command Coverage
+## Use JSON Output
 
-The CLI keeps its user-facing command implementations handwritten, but derives
-an operation catalog from the OpenAPI document shipped with the exact
-`sumup-go` version pinned in `go.mod`. The catalog records operation IDs, SDK
-clients and methods, HTTP paths, parameters, and request-body metadata.
-
-Run the generator after updating `sumup-go`:
+Use `--json` to get results as JSON for scripts:
 
 ```bash
-make generate
+sumup --json readers list --merchant-code M123
 ```
 
-Each API leaf binds its generated OpenAPI operation ID directly in the command
-definition. Tests enforce a one-to-one relationship between the pinned SDK,
-the generated catalog, and the CLI command tree, so an SDK upgrade fails CI
-until every new endpoint has exactly one corresponding command.
+## Shell Completion
 
-### Developer Portal Code Samples
-
-Generate a deterministic, portal-compatible JSON catalog containing one CLI
-code sample for every OpenAPI operation exposed by the CLI:
+Enable command completion for your shell:
 
 ```bash
-VERSION=v0.1.0 make generate-codesamples
+# bash
+source <(sumup completion bash)
+
+# zsh
+source <(sumup completion zsh)
+
+# fish
+sumup completion fish > ~/.config/fish/completions/sumup.fish
 ```
 
-The catalog is written to `code-samples.json` by default. Set
-`CODESAMPLES_OUT` to use a different path. The generated file uses the same
-versioned schema as the SDK sample catalogs and is not committed to this
-repository. Published releases automatically open or update a pull request
-that writes the catalog to `src/codesamples/cli.json` in
-`sumup/sumup-developer`.
+Release archives also include completion scripts for bash, zsh, and fish,
+plus a man page at `man/man1/sumup.1.gz`.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and contribution guidelines.
 
 [docs-badge]: https://img.shields.io/badge/SumUp-documentation-white.svg?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgY29sb3I9IndoaXRlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogICAgPHBhdGggZD0iTTIyLjI5IDBIMS43Qy43NyAwIDAgLjc3IDAgMS43MVYyMi4zYzAgLjkzLjc3IDEuNyAxLjcxIDEuN0gyMi4zYy45NCAwIDEuNzEtLjc3IDEuNzEtMS43MVYxLjdDMjQgLjc3IDIzLjIzIDAgMjIuMjkgMFptLTcuMjIgMTguMDdhNS42MiA1LjYyIDAgMCAxLTcuNjguMjQuMzYuMzYgMCAwIDEtLjAxLS40OWw3LjQ0LTcuNDRhLjM1LjM1IDAgMCAxIC40OSAwIDUuNiA1LjYgMCAwIDEtLjI0IDcuNjlabTEuNTUtMTEuOS03LjQ0IDcuNDVhLjM1LjM1IDAgMCAxLS41IDAgNS42MSA1LjYxIDAgMCAxIDcuOS03Ljk2bC4wMy4wM2MuMTMuMTMuMTQuMzUuMDEuNDlaIiBmaWxsPSJjdXJyZW50Q29sb3IiLz4KPC9zdmc+

@@ -17,7 +17,7 @@ func TestRunWritesCatalogToStdout(t *testing.T) {
 	t.Parallel()
 
 	var stdout bytes.Buffer
-	err := run("", "v1.2.3", &stdout)
+	err := run("", "v1.2.3", "", &stdout)
 
 	require.NoError(t, err)
 	var catalog codesamples.Catalog
@@ -42,7 +42,7 @@ func TestWriteSamplesCreatesOutputDirectory(t *testing.T) {
 func TestRunRequiresCLIVersion(t *testing.T) {
 	t.Parallel()
 
-	err := run("", "", &bytes.Buffer{})
+	err := run("", "", "", &bytes.Buffer{})
 
 	require.EqualError(t, err, "cli version is required")
 }

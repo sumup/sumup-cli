@@ -6,7 +6,9 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -26,21 +28,25 @@ import (
 func TestGenerate(t *testing.T) {
 	t.Parallel()
 
-	catalog, err := Generate("v1.2.3")
+	catalog, err := Generate("v1.2.3", "")
 
 	require.NoError(t, err)
 	assert.Equal(t, 1, catalog.SchemaVersion)
 	assert.Equal(t, "bash", catalog.Language)
 	assert.Equal(t, SDK{Module: "github.com/sumup/sumup-cli", Version: "v1.2.3"}, catalog.SDK)
 	assert.Equal(t, apicommands.CatalogOpenAPIVersion, catalog.OpenAPIVersion)
-	require.Len(t, catalog.Samples, len(apicommands.Operations))
+	assert.Greater(t, len(catalog.Samples), len(apicommands.Operations))
 	assert.True(t, slices.IsSortedFunc(catalog.Samples, func(a, b Sample) int {
 		return strings.Compare(a.ID, b.ID)
 	}))
 
 	seen := make(map[string]struct{}, len(catalog.Samples))
 	for _, sample := range catalog.Samples {
-		assert.Equal(t, sample.ID, sample.OperationID)
+		wantID := sample.OperationID
+		if sample.Example != "" {
+			wantID += "." + sample.Example
+		}
+		assert.Equal(t, wantID, sample.ID)
 		assert.NotEmpty(t, sample.HTTPMethod)
 		assert.NotEmpty(t, sample.Path)
 		assert.NotContains(t, sample.Source, "<")
@@ -55,8 +61,10 @@ func TestGenerate(t *testing.T) {
 		assert.NoError(t, err, "sample %q is not valid shell syntax:\n%s\n%s", sample.ID, sample.Source, output)
 	}
 
-	createCheckout := sampleByID(t, catalog.Samples, "CreateCheckout")
+	createCheckout := sampleByID(t, catalog.Samples, "CreateCheckout.Checkout")
 	assert.Equal(t, "Checkout", createCheckout.Example)
+	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateCheckout.HostedCheckout").Source, "--hosted-checkout")
+	assert.NotContains(t, createCheckout.Source, "--hosted-checkout")
 	assert.Equal(t, `sumup checkouts create \
   --reference "f00a8f74-b05d-4605-bd73-2a901bae5802" \
   --amount "10.1" \
@@ -73,23 +81,56 @@ func TestGenerate(t *testing.T) {
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateGoReaderCheckout").Source, "sumup readers go-checkout")
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "sumup members create")
 	assert.NotContains(t, sampleByID(t, catalog.Samples, "CreateMerchantMember").Source, "members invite")
-	assert.Equal(t, "# not supported", sampleByID(t, catalog.Samples, "ProcessCheckout").Source)
+	assert.Equal(t, "# not supported", sampleByID(t, catalog.Samples, "ProcessCheckout.ProcessToken").Source)
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateMerchantToken").Source, `--action "checkout"`)
 	assert.Contains(t, sampleByID(t, catalog.Samples, "CreateMerchantToken").Source, "--json \\\n")
 	assert.Contains(t, sampleByID(t, catalog.Samples, "UpdateReaderSettings").Source, "--menu-lock-enabled \\\n")
 
-	encodedSample, err := json.Marshal(sampleByID(t, catalog.Samples, "CreateCheckout"))
+	encodedSample, err := json.Marshal(sampleByID(t, catalog.Samples, "CreateCheckout.Checkout"))
 	require.NoError(t, err)
 	assert.Contains(t, string(encodedSample), `"sample":`)
 	assert.NotContains(t, string(encodedSample), `"source":`)
 }
 
+func TestGenerateWithSpecIncludesFullAndPartialRefunds(t *testing.T) {
+	t.Parallel()
+
+	specPath, err := pinnedSpecPath()
+	require.NoError(t, err)
+	raw, err := os.ReadFile(specPath)
+	require.NoError(t, err)
+	var spec map[string]any
+	require.NoError(t, json.Unmarshal(raw, &spec))
+	spec["info"].(map[string]any)["version"] = "examples-preview"
+	media := spec["paths"].(map[string]any)["/v1.0/merchants/{merchant_code}/payments/{transaction_id}/refunds"].(map[string]any)["post"].(map[string]any)["requestBody"].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)
+	delete(media, "example")
+	media["examples"] = map[string]*namedExample{
+		"FullRefund":    {Value: json.RawMessage(`{}`)},
+		"PartialRefund": {Value: json.RawMessage(`{"amount":24.42}`)},
+	}
+	encoded, err := json.Marshal(spec)
+	require.NoError(t, err)
+	filename := filepath.Join(t.TempDir(), "openapi.json")
+	require.NoError(t, os.WriteFile(filename, encoded, 0o600))
+
+	catalog, err := Generate("v1.2.3", filename)
+
+	require.NoError(t, err)
+	full := sampleByID(t, catalog.Samples, "RefundTransaction.FullRefund")
+	partial := sampleByID(t, catalog.Samples, "RefundTransaction.PartialRefund")
+	assert.NotContains(t, full.Source, "--amount")
+	assert.Contains(t, partial.Source, `--amount "24.42"`)
+	assert.Equal(t, "examples-preview", catalog.OpenAPIVersion)
+	assert.Equal(t, "FullRefund", full.Example)
+	assert.Equal(t, "PartialRefund", partial.Example)
+}
+
 func TestGenerateDeterministic(t *testing.T) {
 	t.Parallel()
 
-	first, err := Generate("v1.2.3")
+	first, err := Generate("v1.2.3", "")
 	require.NoError(t, err)
-	second, err := Generate("v1.2.3")
+	second, err := Generate("v1.2.3", "")
 	require.NoError(t, err)
 
 	firstJSON, err := json.Marshal(first)
@@ -102,7 +143,7 @@ func TestGenerateDeterministic(t *testing.T) {
 func TestGenerateRequiresVersion(t *testing.T) {
 	t.Parallel()
 
-	_, err := Generate("  ")
+	_, err := Generate("  ", "")
 
 	require.EqualError(t, err, "cli version is required")
 }
@@ -152,36 +193,38 @@ func TestGeneratedInvocationsReachAPITransport(t *testing.T) {
 			require.NoError(t, err)
 			spec, err := loadPinnedSpec()
 			require.NoError(t, err)
-			invocation, err := buildInvocation(spec, bound, spec.exampleFor(operation.HTTPMethod, operation.Path))
-			require.NoError(t, err)
+			for _, example := range spec.examplesFor(operation.HTTPMethod, operation.Path) {
+				invocation, err := buildInvocation(spec, bound, example)
+				require.NoError(t, err)
 
-			transportError := errors.New("sample reached API transport")
-			called := false
-			httpClient := &http.Client{Transport: sampleRoundTripFunc(func(*http.Request) (*http.Response, error) {
-				called = true
-				return nil, transportError
-			})}
-			appCtx := &app.Context{
-				Client:       sumup.NewClient(sumupclient.WithClient(httpClient), sumupclient.WithBaseURL("https://api.test")),
-				MerchantCode: "M123",
-				Output:       io.Discard,
-				StatusOutput: io.Discard,
+				transportError := errors.New("sample reached API transport")
+				called := false
+				httpClient := &http.Client{Transport: sampleRoundTripFunc(func(*http.Request) (*http.Response, error) {
+					called = true
+					return nil, transportError
+				})}
+				appCtx := &app.Context{
+					Client:       sumup.NewClient(sumupclient.WithClient(httpClient), sumupclient.WithBaseURL("https://api.test")),
+					MerchantCode: "M123",
+					Output:       io.Discard,
+					StatusOutput: io.Discard,
+				}
+				root := &cli.Command{
+					Name:     "sumup",
+					Commands: resourceCommands,
+					Flags: []cli.Flag{
+						&cli.BoolFlag{Name: "json", Destination: &appCtx.JSONOutput},
+					},
+					Metadata: map[string]any{
+						app.ContextKey: appCtx,
+					},
+				}
+
+				err = root.Run(t.Context(), invocation.args())
+
+				assert.True(t, called, "sample failed before making an API request: %v", err)
+				require.ErrorIs(t, err, transportError)
 			}
-			root := &cli.Command{
-				Name:     "sumup",
-				Commands: resourceCommands,
-				Flags: []cli.Flag{
-					&cli.BoolFlag{Name: "json", Destination: &appCtx.JSONOutput},
-				},
-				Metadata: map[string]any{
-					app.ContextKey: appCtx,
-				},
-			}
-
-			err = root.Run(t.Context(), invocation.args())
-
-			assert.True(t, called, "sample failed before making an API request: %v", err)
-			require.ErrorIs(t, err, transportError)
 		})
 	}
 }
