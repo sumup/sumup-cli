@@ -104,3 +104,15 @@ func TestRenderCatalog(t *testing.T) {
 	assert.Contains(t, output, `Description: "Returns every widget."`)
 	assert.True(t, strings.HasSuffix(output, "}\n"))
 }
+
+func TestParseOperationWithoutMethodOverride(t *testing.T) {
+	t.Parallel()
+
+	parsed, err := parseOperation("/sales", "GET", nil, &openAPIOperation{
+		OperationID: "ListSalesV10",
+		Tags:        []string{"Sales"},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "ListSalesV10", parsed.SDKMethod)
+}

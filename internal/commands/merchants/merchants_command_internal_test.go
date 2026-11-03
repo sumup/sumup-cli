@@ -39,13 +39,13 @@ func TestPersonCommands(t *testing.T) {
 			assert.Equal(t, http.MethodGet, request.Method)
 			assert.Equal(t, "/v1/merchants/M123/persons/person_123", request.URL.Path)
 			assert.Empty(t, request.URL.Query().Get("version"))
-			return merchantsJSONResponse(http.StatusOK, `{"id":"person_123","given_name":"Ada","middle_name":"Byron","family_name":"Lovelace","birthdate":"1815-12-10","citizenship":"GB","phone_number":"+441234567890","relationships":["representative"]}`)
+			return merchantsJSONResponse(http.StatusOK, `{"id":"person_123","given_name":"Ada","family_name":"Lovelace","birthdate":"1815-12-10","citizenship":"GB","phone_number":"+441234567890","relationships":["representative"]}`)
 		})
 
 		err := cmd.Run(t.Context(), []string{"merchants", "persons", "get", "person_123"})
 
 		require.NoError(t, err)
-		for _, want := range []string{"person_123", "Ada", "Byron", "Lovelace", "1815-12-10", "GB", "+441234567890", "representative"} {
+		for _, want := range []string{"person_123", "Ada", "Lovelace", "1815-12-10", "GB", "+441234567890", "representative"} {
 			assert.Contains(t, out.String(), want)
 		}
 	})
