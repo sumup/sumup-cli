@@ -317,14 +317,15 @@ func parseOperation(path, httpMethod string, pathParameters []openAPIParameter, 
 	if len(source.Tags) != 1 || source.Tags[0] == "" {
 		return operation{}, fmt.Errorf("operation %q must have exactly one tag", source.OperationID)
 	}
-	if source.Codegen.MethodName == "" {
-		return operation{}, fmt.Errorf("operation %q has no x-codegen.method_name", source.OperationID)
+	methodName := source.Codegen.MethodName
+	if methodName == "" {
+		methodName = source.OperationID
 	}
 
 	result := operation{
 		ID:          source.OperationID,
 		Client:      source.Tags[0],
-		SDKMethod:   upperCamel(source.Codegen.MethodName),
+		SDKMethod:   upperCamel(methodName),
 		HTTPMethod:  httpMethod,
 		Path:        path,
 		Summary:     strings.TrimSpace(source.Summary),

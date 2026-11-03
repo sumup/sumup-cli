@@ -187,7 +187,6 @@ func renderPerson(w io.Writer, person *sumup.Person) error {
 	return display.DataList(w, []attribute.KeyValue{
 		attribute.ID(person.ID),
 		attribute.OptionalString("Given Name", person.GivenName),
-		attribute.OptionalString("Middle Name", person.MiddleName),
 		attribute.OptionalString("Family Name", person.FamilyName),
 		attribute.Attribute("Relationships", attribute.Styled(personRelationships(person))),
 		attribute.OptionalString("User ID", person.UserID),
@@ -205,7 +204,7 @@ func personName(person *sumup.Person) string {
 	}
 
 	parts := make([]string, 0, 3)
-	for _, part := range []*string{person.GivenName, person.MiddleName, person.FamilyName} {
+	for _, part := range []*string{person.GivenName, person.FamilyName} {
 		if part != nil && strings.TrimSpace(*part) != "" {
 			parts = append(parts, strings.TrimSpace(*part))
 		}
