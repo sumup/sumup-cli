@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/sumup/sumup-cli/compare/v0.8.0...v0.9.0) (2026-11-03)
+
+
+### Features
+
+* add missing sales commands ([#184](https://github.com/sumup/sumup-cli/issues/184)) ([6cce556](https://github.com/sumup/sumup-cli/commit/6cce5567a1ce68d36226183684050c59bdb45cc7))
+
 ## [0.8.0](https://github.com/sumup/sumup-cli/compare/v0.7.0...v0.8.0) (2026-11-03)
 
 
